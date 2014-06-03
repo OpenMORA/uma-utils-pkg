@@ -1,0 +1,158 @@
+/********************************************************************************
+*
+*			Extension of the STRING class
+*
+*			(C) Juan Antonio Fernández Madrigal, 2000
+*
+*	NOTE: This module covers some errors of the STL library, such as the one of
+*	the method <string>.find(<substr>,<pos>), which does not work properly if <substr>
+*	appears exactly at the end of <string>.
+*
+********************************************************************************/
+
+#if !defined(_JAFMA_STRING)
+#define _JAFMA_STRING
+
+#include "Jafma_Iostream"
+#include <string>
+
+
+namespace JAFMA
+{
+
+/******************************************************************
+*
+*				Functions
+*
+*******************************************************************/
+
+unsigned find_substr(const std::string s, const std::string subs, unsigned pos0=0);
+/* Returns the position of the first appearance of the string SUBS inside S. It starts
+to search from position POS0. Return s.npos if SUBS is not encountered.
+NOTE: This function should be used instead of the "find" method of the stl-string type,
+due to an error of the method */
+
+bool bracketed_substr(const std::string &is, std::string &os,
+					  const char delimo = '{', const char delimc = '}',
+					  unsigned *posfound = 0);
+/* Find a substring in IS that is within brackets (characters
+DELIMO and DELIMC, respectively), and store it into OS. If no such substring
+does exist, return FALSE. Otherwise (including the case that the delimiters exist
+but no character is in between, return TRUE.
+If POSFOUND!=0, store into POSFOUND the position where DELIMO has been found. */
+
+std::string noleadingspaces_substr(const std::string s, const bool noascii=false);
+/* Return a copy of S that has no leading spaces nor tabs. If S contains only spaces
+and/or tabs, return "".
+If NOASCCI==true, also discard all the characters below ascii 32. */
+
+std::string notailingspaces_substr(const std::string s, const bool noascii=false);
+/* Return a copy of S that has no tailing spaces nor tabs. If S contains only spaces
+and/or tabs, return "".
+If NOASCCI==true, also discard all the characters below ascii 32. */
+
+std::string nolateralspaces_substr(const std::string s, const bool noascii=false);
+/* Return a copy of S that has no leading or tailing spaces nor tabs. If S contains
+only spaces and/or tabs, returns "".
+If NOASCCI==true, also discard all the characters below ascii 32. */
+
+std::string compact_str(const std::string s, const unsigned tabs = 0, const unsigned tamline = 32);
+/* Return a string that contains a compact (ASCII) version of S, indented TABS
+times, and with TAMLINE characters in each line (excluding tabs) */
+
+std::string compact_data(void *d, unsigned tam, const unsigned tabs = 0, const unsigned tamline = 32);
+/* The same as COMPACT_STR, but this one compacts a block of data pointed by D, with
+TAM bytes */
+
+std::string expand_str(const std::string &s);
+/* Interpret the compacted string S and return the original string */
+
+bool expand_data(const std::string s, void **d, unsigned *siz=0);
+/* The same as EXPAND_STR but expands S to a block of data that it creates in *D.
+If SIZ!=0, store in it the size of the block */
+
+std::string read_compact_str(std::istream &is);
+/* Read and return a compact string from the input stream IS */
+
+std::string read_compact_data(std::istream &is);
+/* Read and return a compact block of data from the input stream IS */
+
+void indent_str(std::string &s, const unsigned numtabs, const char ic='\t');
+/* Add NUMTABS tabs to the beginning of each line of S */
+
+std::string make_identifier_str(const std::string s);
+/* Return a copy of S trnasformed into a string that can be used as an identifier
+in a programming language such as "C" */
+
+std::string upper_str(const std::string s);
+/* Return a copy of S in capital letters */
+
+std::string truncate_str(const std::string s, unsigned maxlen);
+/* Return a copy of S but truncated up to MAXLEN characters. If MAXLEN is 0, no restriction
+is made */
+
+std::string extract_directory(const std::string &path);
+/* Given a complete path of a file in PATH, return a copy of that string that
+only contains the path, but not the file. It removes the last "\".
+If the directory is empty, it returns "."
+NOTE: It also works with directories containing blanks -spaces-, special characters, etc. */
+
+std::string extract_filename(const std::string &path);
+/* Given a complete path of a file in PATH, return a copy of it that only
+contains the file name, not the path.
+NOTE: It also works with directories containing blanks -spaces-, special characters, etc. */
+
+std::string extract_fileextension(const std::string &fname);
+/* Return a string with the extension of the file in FNAME */
+
+/*std::string changesondirectory(const std::string &dir0, const std::string &dir1);*/
+				/* This routine is not implemented yet */
+/* Return the changes on DIR0 that must be done to obtain DIR1, expressed as the 
+argument of a command "CHDIR" that is executed from DIR0 to get at DIR1.
+For example, if DIR0="E:\home\juan\textos" and DIR1="E:\home\ana", it will return
+"..\..\ana" */
+
+/* ----------------- Routines to convert from strings to numbers --------------- */
+
+void string_to_number(const std::string s, int &n);
+/* Find the first integer number written in S and store it into N. Store 0 if
+no valid number is found */
+
+void string_to_number(const std::string s, unsigned &n);
+/* Find the first unsigned integer number written in S and store it into N.
+Store 0 if no valid number is found */
+
+void string_to_number(const std::string s, unsigned long &n);
+/* Find the first unsigned long number written in S and store it into N.
+Store 0 if no valid number is found */
+
+void string_to_number(const std::string s, float &n);
+/* Find the first floating point number written in S and store it into N.
+Store 0.0 if no valid number is found */
+
+void string_to_number(const std::string s, double &n);
+/* Find the first double floating point number written in S and store it into N.
+Store 0.0 if no valid number is found */
+
+void number_to_string(const int n, std::string &s);
+/* Writes N into S */
+
+void number_to_string(const long n, std::string &s);
+/* Writes N into S */
+
+void number_to_string(const unsigned n, std::string &s);
+/* Writes N into S */
+
+void number_to_string(const unsigned long n, std::string &s);
+/* Writes N into S */
+
+void number_to_string(const float n, std::string &s);
+/* Writes N into S */
+
+void number_to_string(const double n, std::string &s);
+/* Writes N into S */
+
+
+} // End JAFMA namespace
+
+#endif

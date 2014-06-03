@@ -1,0 +1,61 @@
+/********************************************************************************
+*
+*			Extension of the IOSTREAM class
+*
+*			(C) Juan Antonio Fernández Madrigal, 2000
+*
+********************************************************************************/
+
+#if !defined(_JAFMA_IOSTREAM)
+#define _JAFMA_IOSTREAM
+
+#include "Jafma_String"
+#include <iostream>
+#include <string>
+
+
+namespace JAFMA
+{
+
+/******************************************************************
+*
+*				Functions and Operators
+*
+*******************************************************************/
+
+	std::string rep(unsigned t, char x);
+/* The "rep(t,x)" ostream manipulator, which outputs T times the character X.
+   For example:
+
+		cout << rep(10,'\t');	// outputs 10 tabs
+*/
+
+	std::string ReadLine(std::istream &is, const char delim = '\n');
+/* Read from IS a line and return it as a string. Read characters until a DELIM
+is found. Blanks are treated as any other
+character, and therefore, included in the string. */
+
+	std::string PeekLine(std::istream &is, const char delim = '\n');
+/* The same as ReadLine, but the line is not eliminated from IS, and is readable for
+future accesses */
+
+	bool SearchLineSubstr(std::istream &i, const std::string substr, std::string &line);
+/* Search in I a line which contains SUBSTR as a substring, storing it in LINE. If it is
+not found, return FALSE.
+If the line is found, the read pointer of I will point to the following character past the
+line. If it is not found, the read pointer is at the end of the stream */
+
+std::string ReadEverything(std::istream &is, unsigned maxlen=0, unsigned lenbuf=512);
+/* Read characters from IS until EOF is signalled or MAXLEN is overpassed. Return
+the resulting string. If MAXLEN==0, there is no limit to the length of the read
+string. LENBUF is the length of the blocks of characters that are read each time;
+if it is 0, it is considered to be 1 */
+
+bool SearchCharacter(std::istream &is, char c);
+/* Read characters from IS until character C is found, leaving the reading pointer pointing to
+the following character. If it is not found,return FALSE */
+
+
+} // End JAFMA namespace
+
+#endif

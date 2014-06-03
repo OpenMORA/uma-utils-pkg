@@ -1,0 +1,28 @@
+#JMS-ZONE(ARCHITECTURE_GRAMMAR)#
+#ABNF 1.0 ISO8859-1
+//Automatic Generated Grammar File for BABEL Architecture using the Verbio Technologies ABNF Format
+//
+//ECM, 2006
+//
+
+//<------------ Objects that are recognized by the World Model and the Task Planner------------>
+#JMS-REPAREA(ObjectType_rules,)#
+//<---Rules associated with the objects of type #JMS-REPMACRO(ObjectType_rules,Type_name,)#--->
+#JMS-REPAREA(Object_rules,)#
+//#JMS-REPMACRO(Object_rules,Object_label,)# object associated rules:
+#JMS-REPAREA(Object_relative_rules,)#
+$#JMS-REPMACRO(Object_relative_rules,Antecedent_name,)# =#JMS-REPAREA(Obj_RelRule_consequents_list,)##JMS-IFREP(Obj_RelRule_consequents_list,is_NonTerminal,"false")#(#JMS-IFREP(Obj_RelRule_consequents_list,is_MascSing,"false")#[el | del|un]#JMS-ENDIF(is_MascSing)##JMS-IFREP(Obj_RelRule_consequents_list,is_MascPlural,"false")#[los|unos]#JMS-ENDIF(is_MascPlural)##JMS-IFREP(Obj_RelRule_consequents_list,is_FemSing,"false")#[la|una]#JMS-ENDIF(is_FemSing)##JMS-IFREP(Obj_RelRule_consequents_list,is_FemPlural,"false")#[las|unas]#JMS-ENDIF(is_FemPlural)#$#JMS-ELSE(is_NonTerminal)#"#JMS-ENDIF(is_NonTerminal)##JMS-REPMACRO(Obj_RelRule_consequents_list,Consequent_name,)##JMS-IFREP(Obj_RelRule_consequents_list,is_NonTerminal,"false")#)#JMS-ELSE(is_NonTerminal)#"#JMS-ENDIF(is_NonTerminal)##JMS-IFREP(Obj_RelRule_consequents_list,OR_Rule,"false")#|#JMS-ENDIF(OR_Rule)##JMS-ENDREPAREA(Obj_RelRule_consequents_list)#;
+#JMS-ENDREPAREA(Object_relative_rules)#
+#JMS-ENDREPAREA(Object_rules)#
+//* Global rule for #JMS-REPMACRO(ObjectType_rules,Type_name,)#:
+$#JMS-REPMACRO(Type_relative_rules,Antecedent_name,)# =#JMS-REPAREA(Type_RelRule_consequents_list,)##JMS-IFREP(Type_RelRule_consequents_list,is_NonTerminal,"false")#(#JMS-IFREP(Type_RelRule_consequents_list,is_MascSing,"false")#[el | del|un]#JMS-ENDIF(is_MascSing)##JMS-IFREP(Type_RelRule_consequents_list,is_MascPlural,"false")#[los|unos]#JMS-ENDIF(is_MascPlural)##JMS-IFREP(Type_RelRule_consequents_list,is_FemSing,"false")#[la|una]#JMS-ENDIF(is_FemSing)##JMS-IFREP(Type_RelRule_consequents_list,is_FemPlural,"false")#[las|unas]#JMS-ENDIF(is_FemPlural)#$#JMS-ELSE(is_NonTerminal)#"#JMS-ENDIF(is_NonTerminal)##JMS-REPMACRO(Type_RelRule_consequents_list,Consequent_name,)##JMS-IFREP(Type_RelRule_consequents_list,is_NonTerminal,"false")#)#JMS-ELSE(is_NonTerminal)#"#JMS-ENDIF(is_NonTerminal)##JMS-IFREP(Type_RelRule_consequents_list,OR_Rule,"false")#|#JMS-ENDIF(OR_Rule)##JMS-ENDREPAREA(Type_RelRule_consequents_list)#;
+#JMS-ENDREPAREA(ObjectType_rules)#
+
+//<------------ Actions that can be executed by the Task Planner------------>
+#JMS-REPAREA(Actions_list,)#
+//#JMS-REPMACRO(Actions_list,Action_name,)# action associated rules:
+#JMS-REPAREA(Action_rules,)#
+#JMS-IFREP(Action_rules,is_Publishable,"false")#public #JMS-ENDIF(is_Publishable)#$#JMS-REPMACRO(Action_rules,Antecedent_name,)# =#JMS-REPAREA(Action_rules_consequents_list,)##JMS-IFREP(Action_rules_consequents_list,is_NonTerminal,"false")#($#JMS-ELSE(is_NonTerminal)#"#JMS-ENDIF(is_NonTerminal)##JMS-REPMACRO(Action_rules_consequents_list,Consequent_name,)##JMS-IFREP(Action_rules_consequents_list,is_NonTerminal,"false")#)#JMS-IFREP(Action_rules_consequents_list,is_Transitive,"false")#[a | al]#JMS-ENDIF(is_Transitive)##JMS-ELSE(is_NonTerminal)#"#JMS-ENDIF(is_NonTerminal)##JMS-IFREP(Action_rules_consequents_list,OR_Rule,"false")#|#JMS-ENDIF(OR_Rule)##JMS-ENDREPAREA(Action_rules_consequents_list)#;
+#JMS-ENDREPAREA(Action_rules)#
+#JMS-ENDREPAREA(Actions_list)#
+#JMS-ENDZONE(ARCHITECTURE_GRAMMAR)#

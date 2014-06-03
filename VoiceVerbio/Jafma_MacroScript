@@ -1,0 +1,393 @@
+/*
+	Class for MACRO-SCRIPTS: ascii files that contain macros that can be susbtituted
+	(C) Juan Antonio Fernández Madrigal, 2000-2001
+
+	-A jafma's macro-script file (.jms) contains an ascii text with possibly some
+	macro specification. The string "#JMS-" is reserved all along
+	the text, and thus it cannot be used. 
+	
+	-All the macro-script keywords begin with "#JMS-". 
+	These keywords can contain parameters. None of the following characters are allowed 
+	in them:
+
+	  Control characters (new line, carrier return)
+	  Comma (,)
+	  Parenthesis ((,))
+	  Sharp (#)
+
+	-Some keywords accept parameters enclosed in ("). They can contain commas (,) and 
+	parenthesis, but no sharps or control characters.
+
+	-About nesting:
+	
+		-ZONES cannot be contained into other zones, they are the top of the hierarchy
+
+		-All the other areas with some body (REPAREAS, CONDITIONAL, COND-REPS) can be
+		nested within others, if the nesting is done in a correct manner (equilibrated
+		nesting)
+
+		-All the areas with some body and a name must have an unique name
+
+
+	--------
+	 MACROS
+	--------
+	
+	The macros may appear anywhere within the text under the following format:
+
+		#JMS-MACRO(<name>,<default>)#
+
+	where <name> is the name of the macro (just as a C++ variable identifier), and
+	<default> is the text which is susbtituted by, by default (if no call to the "RegisterMacro"
+	method is done on that macro). The <default> field may be empty, but the comma 
+	(,) must appear.
+
+	-------
+	 ZONES
+	-------
+
+	The .jms file can be divided into zones enclosed by the keywords:
+
+	#JMS-ZONE(<name>,<macroname1>,<macroname2>,...,<macronameN>)#
+	...
+	#JMS-ENDZONE(<name>)#
+
+	which must lie in a single line. A zone
+	in the file will be identified by each <name>. <name> should not be duplicated, 
+	although that case is not checked for.
+	The list of macro names (<macronameX>) is an enumeration without repetition of
+	all the macros that lie within the zone. This information can be required from
+	the script by user demand. Its correspondence with the actual appearances of
+	the macros within the script is not checked.
+	NOTE: zones cannot be nested.
+
+	-------------------
+	 CONDITIONAL AREAS
+	-------------------
+
+	Certain areas of text can be enclosed in a conditional structure:
+
+	#JMS-IF(<condmacro>,<default_truth_value>)#
+	...
+	#JMS-ELSE(<condmacro>)#
+	...
+	#JMS-ENDIF(<condmacro>)#
+
+	where <condmacro> is a macro declared in the header of the zone, as any other
+	conventional macro.
+	When the ApplyMacros method finds a conditional area, it test if the <condmacro>
+	can be evaluated to the string "true" (independently on the capitals). If it can,
+	the section between the IF and the ELSE is translated, otherwise, the section 
+	between the ELSE and the ENDIF is. The ELSE is optional.
+
+	Conditional macros (<condmacro>) cannot be repetition macros of repetition areas,
+	they can only be global macros defined at the header of the zone. For using
+	repetition macros defined at a repetition area, use Conditional-Repetition areas.
+
+	--- Extension ---
+
+	#JMS-IFEQ(<condmacro>,<compstring>)#
+	...
+	#JMS-ELSE(<condmacro>)#
+	...
+	#JMS-ENDIF(<condmacro>)#
+
+	Where the value registered for <condmacro> will be compared (Case-sensitive) with
+	the string <compstring> (a plain text within '"' that does not contain '#')
+	If <condmacro> has not been registered, is taken as an empty string.
+
+
+	------------------------------
+	 CONDITIONAL-REPETITION AREAS
+	------------------------------
+
+	They are exactly as the CONDITIONAL areas, except that the <condmacro> is now
+	a <condrepmacro>, that is, a macro defined inside a repetition area. They are
+	useful for making decisions inside repetition areas, and only can be used
+	inside repetition areas (otherwise an error is produced). Their syntax is:
+
+	#JMS-IFREP(<rep_area_name>,<condrepmacro>,<default_truth_value>)#
+	...
+	#JMS-ELSE(<condrepmacro>)#
+	...
+	#JMS-ENDIF(<condrepmacro>)#
+
+	If the macro <condrepmacro> has no registered values for the loop index where it
+	is used, the ELSE part will take effect.
+
+	--- Extension ---
+
+	#JMS-IFREPEQ((rep_area_name),<condrepmacro>,<compstring>)#
+	...
+	#JMS-ELSE(<condrepmacro>)#
+	...
+	#JMS-ENDIF(<condrepmacro>)#
+
+	Where the value registered for <condrepmacro> will be compared (Case-sensitive) with
+	the string <compstring> (a plain text within '"' that does not contain '#')
+	If <condrepmacro> has not been registered, is taken as an empty string.
+
+
+	------------------
+	 REPETITION AREAS
+	------------------
+
+	Certain areas within a zone (or within the whole text) can be marked as 
+	macro-repetition areas, enclosing them within the keywords:
+
+	#JMS-REPAREA(<rep_area_name>,<default_number_of_repetitions>)#
+	...
+	#JMS-ENDREPAREA(<rep_area_name>)#
+
+	Besides normal macros (that will be translated as they do outside these areas), 
+	rep-areas can contain special repetition macros defined as follows:
+
+	#JMS-REPMACRO(<rep_area_name>,<rep_macro_name>,<default_value>)#
+
+	that are not included in the list of macros of the zone (in the #JMS-ZONE
+	keyword) and only exist inside the repetition area. There is a special rep-macro
+	that is built-in and invoked with:
+
+	#JMS-REPINDEX(<rep_area_name>)#
+
+	It holds the current value of the index of repetition (from 0). If it is placed
+	outside a repetition area, it is ignored.
+
+	When the method "ApplyMacros" is called on a zone that contains repetition
+	areas, the #JMS-REPAREA# and #JMS-ENDREPAREA# keywords are discarded and
+	the text inside them is repeated for a given number of times.
+	
+	At macro-registering time, the number of times that a repetition area will
+	be interpreted can be set by the "SetNumberOfRepetitions" method, or alternatively
+	it can be specified in the <default_number_of_repetitions> parameter of the area
+	(which otherwise can be absent -but the comma must appear-). If it is set
+	by the "SetNumberOfRepetitions" method, that value will override the default
+	or previously set ones.
+
+	At macro-registering time, the rep-macros inside the repetition area can 
+	also be assigned values for particular repetitions, by the 
+	"RegisterRepetitionMacroValue" method. 
+	
+	The behavior of "ApplyMacros" on a repetition area thus depends on its number 
+	of repetitions and the values registered for its rep-macros, as follows:
+
+	-If the number of times that a repetition area will be interpreted is not
+	set, and no rep-macro receives a value, the area will be discarded 
+	completely (0 repetitions). 
+
+	-If the number of times that a repetition area will be interpreted is set 
+	to N, it will be repeated N times. If for some of those repetitions there 
+	is no registered value for a given rep-macro, that macro will take its default
+	value. Any value registered for a rep-macro after the repetition number N,
+	will be ignored.
+
+	-If the number of times that a repetition area will be interpreted is not
+	set, but values for the rep-macros of the area are registered for some of
+	the repetitions, and the maximum repetition index used in those registrations
+	is M, the repetition area will be interpreted M+1 times.
+
+
+	------------------
+	 INCLUDING MACROS
+	------------------
+
+	A zone can be included within the text by referencing it as follows:
+
+	#JMS-INCLUDE(<zonename>[,"<value_first_macro>"[,"<value_second_macro>"[...]]])#
+
+	where zonename is mandatory and is the name of the zone, and each following value corresponds
+	to a value that is assigned to the corresponding macro of the zone. Such values are
+	optional, and are assigned to their corresponding macros according to their
+	positions in the list of values of the include keyword. There cannot be spaces between
+	the commas.
+
+	NOTE: The parameters may be enclosed both between " or ', but if one of these
+	separators is used, the other cannot be.
+
+	When the method ApplyMacros finds an included zone, it search the whole macroscript object
+	for the first appearance of the referenced zone, interprets the zone (substitutes the macros of the zone by
+	the values specified in the include keyword -without (")-, or by none if no value or an
+	empty value is given and no	default value is set for the macro), and then inserts the resulting text 
+	in the place of	the include keyword. Thus, an included zone can contain any of the keywords of any other
+	zone (repetition areas, conditional areas, etc.). 
+	NOTE: within the (") of the values of the include keyword, there cannot appear the following 
+	characters or sequences: ["],[)#].
+	The macros, repetition macros, and conditional values that are registered before the
+	included zone is found are backed up and recovered after the included zone is included. 
+	But	they are still used for the included zone. Therefore, the macro values stated by the 
+	include keyword are discarded after the included zone is included.
+	Conclusion: the backup is used and finally cleaned each time an include keyword is interpreted.
+*/
+
+#if !defined(JAFMA_MACRO_SCRIPTS)
+#define JAFMA_MACRO_SCRIPTS
+
+#include "Jafma_String"
+#include <fstream>
+#include <map>
+#include <vector>
+
+using namespace std;
+
+
+namespace JAFMA
+{
+
+/* ************************************************************************************
+*
+*						CLASS: MacroScript
+*						(A MacroScript object)
+*
+***************************************************************************************/
+
+class JMSKeyword;	// Internal class
+
+class MacroScript 
+{
+ public:
+
+		/* -------------- Constants -------------- */
+
+	typedef struct {
+					string repareaname;	// Name of the reparea
+					unsigned index;		// Value of the index within that area
+					} RepAreaIndex;	// Indexed rep-area
+	typedef vector<RepAreaIndex> IndexesRepetitions; // Vector of reparea indexes
+
+	typedef struct {
+					string zone;	// where the repmacro is defined
+					string reparea; // where the repmacro belongs
+					string name;	// of the repmacro
+					IndexesRepetitions indexes;	// of this repmacro's registration
+					string value;	// to susbtitute for
+					} RepMacroRegistration;	// A registration of a repmacro
+
+	typedef struct {
+					string zone;	// where the reparea lies
+					string name;	// name of the reparea
+					unsigned repetitions;	// number of repetitions of the area
+					} RepAreaNumberOfRepetitions;	// number of repetitions set for a reparea
+
+	typedef map<string,string> MacroSubstitutions;	// set of normal macro substitutions
+	typedef vector<RepMacroRegistration> RepMacroSubstitutions; // set of repmacro substitutions
+	typedef vector<RepAreaNumberOfRepetitions> RepAreaRepetitions;	// Repetitions set for repareas
+
+	typedef struct {
+					MacroSubstitutions substitutions;	// Set of macro substitutions
+					RepAreaRepetitions numberreps;		// Set of number of repetitions for repareas
+					RepMacroSubstitutions repsubsts;	// Set of rep-macro substitutions
+					} RegisteringStatus;	// Status of registerings
+
+	
+		/* ----------------- Constructors and Destructors ------------------ */
+
+	MacroScript(const string s);
+	/* Constructor from strings */
+
+	MacroScript(ifstream &ifs, unsigned bufferlength=0);
+	/* Read the macro script from file IFS, using a reading buffer of BUFFERLENGTH bytes (if
+	0, no buffer is used and the text is read character by character) */
+
+	virtual ~MacroScript(void);
+	/* Destructor */
+
+		/* ----------------- Methods ------------------ */
+
+	void PrintStatus(const string &s) const;
+	/* Print (for debugging) the internal status of the macroscript, with title S */
+
+	bool FindNextZone(string &zonename, unsigned &pos0, unsigned &pinit) const;
+	/* Find the first zone from position POS0, returning its name into ZONENAME and updating
+	POS0 to point past the last character of the ENDZONE keyword. Store into PINIT the position
+	of the first character of the ZONE keyword. Return FALSE if no zone	is found */
+
+	bool RegisterMacro(const string macroname, const string macrovalue);
+	/* Register internally that the macro which name is MACRONAME must be
+	substituted by the text contained into MACROVALUE, independently on the zone that is
+	being translated. Return FALSE if there is no space for registration or if MACRONAME 
+	is empty. If there was any previous value for that macro, it is overrided by MACROVALUE */
+
+	void CleanRegister(void);
+	/* Clean all the previous macro, rep-macro, and rep-area registrations */
+
+	void BackupRegister(bool clearstat=false);
+	/* Make a copy of the current status for backup. There is only room for one backup. 
+	If CLEARSTAT==TRUE, clear the current status after backing it up */
+
+	void RestoreRegister(void);
+	/* Restore the last backup as the current status, but not clean the backup */
+
+	void CleanBackup(void);
+	/* Clean all the registerings done in the current backup */
+
+	int NumberOfMacros(const string zonename);
+	/* Return the number of macros declared within the zone ZONENAME, which cannot be empty. 
+	Any error is returned as -1 */
+
+	bool IndexedMacroName(string &macroname, const unsigned im, const string zonename);
+	/* Read the JMS-ZONE line of text corresponding to ZONENAME (that cannot be
+	empty), and return the IM-th macro name into MACRONAME. Return FALSE if there
+	is no such zone or macro */
+
+	bool SetNumberOfRepetitions(const string zonename, const string repareaname,
+								unsigned numreps);
+	/* Set the number of repetitions of the rep-area REPAREANAME, that is included
+	in the zone ZONENAME (or is not included in any zone, if ZONENAME is empty),
+	to NUMREPS repetitions. Return FALSE if the rep-area is not found or there
+	is any error */
+
+	bool RegisterRepetitionMacroValue(const string zonename, const string repareaname,
+									  const string repmacroname, 
+									  const string indexes,
+									  const string value);
+	/* Register the string VALUE as the substitution text for the rep-macro
+	MACRONAME inside the rep-area REPAREANAME inside the zone ZONENAME (or outside
+	any zone if ZONENAME is empty). INDEXES hold the value for the different indexes
+	of the repareas where the macro lies, first the outer area's index, in the following
+	format: [<outer reparea name>#<index>][<next area>#<index>]...[<inner area>#<index>]
+	(the first repetition for any index will be ==0). 
+	Return FALSE if the rep-macro is not found or there is any error */
+
+	bool RegisterRepetitionMacroValue(const string zonename, const string repareaname,
+									  const string repmacroname, 
+									  const unsigned index,
+									  const string value);
+	/* Idem to the previous one, but it is assumed that the macro appears within only
+	one reparea (non-nested), called REPAREANAME, and so INDEX corresponds to the index 
+	in that area. If this version is used when the repmacro is nested in more than one
+	reparea, the registration will be in effect for ALL the repetitions of the outer
+	repareas (and only for the INDEX repetition of the inner reparea) */
+
+	bool ApplyMacros(const string zonename, string &result, unsigned numtabs=0, char tabch='\t');
+	/* Make all the substitutions in the zone named ZONENAME. The macros that have 
+	not been register, are susbtituted by their default fields. Return the resulting 
+	string into RESULT (the internal script text is not changed). Return FALSE
+	if the syntax of macros is not correct, or if the zone is not found. 
+	If NUMTABS>0, NUMTABS tab characters are inserted at the beginning of each
+	line of the resulting string */
+
+ private:
+
+	string script;						// Body of the scripted string
+	RegisteringStatus status;			// Current set of values registered
+	RegisteringStatus statbackup;		// Last backup of the current status
+	IndexesRepetitions repindexes;		// Current indexes of repareas (an index is not here
+										// if the applymacros function is not running or
+										// it is but the corresponding reparea is not on scope)
+
+	bool FindZone(const string zonename, unsigned pos0, JMSKeyword &zone, bool readbody);
+	void ClearStatus(RegisteringStatus &stat);
+	bool SubstituteEverything(string &result, const string zonename="");
+	bool SubstituteRepMacro(const string zonename, JMSKeyword &repmacro, string &result);
+	bool SubstituteRepArea(const string zonename, JMSKeyword &reparea, string &result);
+	bool SubstituteIfArea(const string zonename, JMSKeyword &ifarea, string &result);
+	bool SubstituteIfRepArea(const string zonename, JMSKeyword &ifreparea, string &result);
+	bool SubstituteIfEQArea(const string zonename, JMSKeyword &ifarea, string &result);
+	bool SubstituteIfRepEQArea(const string zonename, JMSKeyword &ifreparea, string &result);
+	bool SubstituteInclude(const string zonename, JMSKeyword &includekeyword, string &result);
+};
+
+
+}	 // End JAFMA namespace
+
+#endif

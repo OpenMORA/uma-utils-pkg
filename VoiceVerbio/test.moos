@@ -1,0 +1,192 @@
+
+/////////////////////////////////////////////
+// Antler configuration  block
+
+ProcessConfig = ANTLER
+{
+	MSBetweenLaunches 	= 200
+	ExecutablePath		= 
+	
+	//crucial processes
+
+	Run = MOOSDB        @  NewConsole = false
+
+	//Run = pLocalizationPF     @   NewConsole =false
+	//Run = pMobileRobot_Simul    @   NewConsole =false
+	//Run = pJoystickControl     @   NewConsole =false
+	//Run = iRobotGUI2010     @   NewConsole =false
+	Run = pAgenda @ NewConsole =false
+	Run = pStateChart @   NewConsole =false
+	Run = pPlanner @   NewConsole =true
+	Run = pExecutor @   NewConsole =true
+	//Run = pVoice @   NewConsole =true
+	
+	// MOOS-Scope: Visualizer of MOOS-DB	
+	Run = uMS       @       NewConsole=false
+}
+
+ProcessConfig = pStateChart
+{
+	CommsTick = 15
+	AppTick = 15
+	
+	objective_file = D:\Code\MORA\localbuild\bin\Release\Objetivo.scxml
+
+}
+ProcessConfig = pAgenda
+{
+	CommsTick = 25
+	AppTick = 25
+
+}
+
+ProcessConfig = pExecutor
+{
+	CommsTick = 25
+	AppTick = 25
+
+}
+ProcessConfig = pCommon
+{
+	num_actions = 2
+	actions_names = SAY@MOVE
+	
+	num_elements = 2      //here by now, it should be published by the world model module
+
+}
+ProcessConfig = pVoice
+{
+	CommsTick = 25
+	AppTick = 25
+
+	action0=MOVE#T#navegar,navega,ir,llévame,ve,vete,vamos,vámonos#LOCATION
+	action1=SAY#NT#di,decir#FREE_STRING
+	
+	element0=Node1#LOCATION#laboratorio,M,S#dos tres seis,M,S
+	element1=Node2#LOCATION#despacho de Cipri,M,S#dos tres siete a,M,S
+
+
+
+	
+
+}
+ProcessConfig = pPlanner
+{
+	CommsTick = 25
+	AppTick = 25
+	
+	world_model = D:\Code\MORA\localbuild\bin\Release\demo.gph
+	planning_domain = D:\Code\MORA\localbuild\bin\Release\domain.pddl
+	
+	num_actions = 2
+	
+	//Action Compatibility
+	actions_names = SAY@MOVE
+	action0 = MOVE
+	action1 = SAY
+	//This means that the action 0 (SAY) is compatible with action 1 (MOVE) and vice versa 
+
+}
+ProcessConfig = pLocalizationPF
+{
+	CommsTick = 10
+	AppTick = 5
+
+
+	// The map used as a reference for localization
+	// ---------------------------------------------------------
+	// If "simplemap_file" is present, the other map entries are ignored.
+	//simplemap_file 	= one_map.simplemap
+
+	gridmap_image_file	= example_map1.png
+	gridmap_image_res	= 0.05		// Resolution: Size of each pixel (meters)
+	//gridmap_image_cx	= 100		// Pixel coordinates of the origin (0,0)
+	//gridmap_image_cy	= 100		//  If not present, use the image center.
+
+
+	// Initial uniform distribution:
+	X_MIN		= -2
+	X_MAX		= 2
+	Y_MIN		= -2
+	Y_MAX		= 2
+
+	// Number of initial particles
+	sampleSize=200000
+
+	// The Particle Filter algorithm:
+	//	0: pfStandardProposal	  ***
+	//	1: pfAuxiliaryPFStandard
+	//	2: pfOptimalProposal    
+	//	3: pfAuxiliaryPFOptimal	  ***
+	//
+	PF_algorithm=0
+
+	// The Particle Filter Resampling method:
+	//	0: prMultinomial
+	//	1: prResidual
+	//	2: prStratified
+	//	3: prSystematic
+	resamplingMethod=0
+
+	// Set to 1 to enable KLD adaptive sample size:
+	adaptiveSampleSize=1
+
+	// Only for algorithm=3 (pfAuxiliaryPFOptimal)
+	pfAuxFilterOptimal_MaximumSearchSamples=250
+
+	// Resampling threshold
+	BETA=0.5
+
+
+	// KLD-sampling
+	KLD_binSize_PHI_deg=2.5
+	KLD_binSize_XY=0.07
+	KLD_delta=0.01
+	KLD_epsilon=0.01
+	KLD_maxSampleSize=40000
+	KLD_minSampleSize=150
+
+}
+
+
+ProcessConfig = pMobileRobot_Simul
+{
+	CommsTick = 15
+	AppTick = 15
+
+	// Sensors to emulate on the robot
+	// ---------------------------------------------------------
+	show_3d 		= false		// Whether to show the 3D window or not
+	
+
+	// The map used to simulate laser scanners and/or sonars:
+	// ---------------------------------------------------------
+	// If "simplemap_file" is present, the other map entries are ignored.
+	//simplemap_file 	= one_map.simplemap
+
+	gridmap_image_file	= example_map1.png
+	gridmap_image_res	= 0.05		// Resolution: Size of each pixel (meters)
+
+	//gridmap_image_cx	= 100		// Pixel coordinates of the origin (0,0)
+	//gridmap_image_cy	= 100		//  If not present, use the image center.
+
+}
+
+ProcessConfig = pJoystickControl
+{
+	CommsTick = 15
+	AppTick = 10
+
+	max_v	= 0.5	// Maximum linear speed (m/s)
+	max_w	= 90	// Maximum angular speed (deg/s)
+
+}
+
+ProcessConfig = iRobotGUI2010
+{
+	CommsTick = 15
+	AppTick = 15
+
+}
+
+
