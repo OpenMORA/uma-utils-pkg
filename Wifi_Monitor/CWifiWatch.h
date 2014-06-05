@@ -30,14 +30,14 @@
 #define CWifiWatch_H
 
 #include <MOOS/libMOOS/App/MOOSApp.h>
-#include <CMapirMOOSApp.h>
+#include <COpenMORAMOOSApp.h>
 #include <mrpt/hwdrivers/CWirelessPower.h>
 #include <mrpt/poses/CPose3D.h>
 #include <vector>
-#include <mrpt/base.h>
 
 
-class WifiWatch : public CMapirMOOSApp
+
+class WifiWatch : public COpenMORAApp
 {
 public:
     WifiWatch();

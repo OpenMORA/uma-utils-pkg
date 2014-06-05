@@ -30,7 +30,7 @@
 #define CWifiAlert_H
 
 #include <MOOS/libMOOS/App/MOOSApp.h>
-#include <CMapirMOOSApp.h>
+#include <COpenMORAMOOSApp.h>
 #include <mrpt/poses/CPose3D.h>
 #include <vector>
 #include <mrpt/base.h>
@@ -41,7 +41,7 @@
 #define MIN_STRENGTH 20 // Default minimum acceptable signal strength (0-100) (overwritten by the value given in the mission file)
 #define LIST_LENGTH 20 // Default length of past positions (and Wifi Strength values saved) (overwritten by the value given in the mission file)
 
-class WifiAlert : public CMapirMOOSApp
+class WifiAlert : public COpenMORAApp
 {
 public:
     WifiAlert();

@@ -29,13 +29,13 @@
 #ifndef CMapCreator_H
 #define CMapCreator_H
 
-#include <CMapirMOOSApp.h>
+#include <COpenMORAMOOSApp.h>
 #include <sstream>
 #include <iomanip>
 #include <iostream>
 
 
-class CMapCreator : public CMapirMOOSApp
+class CMapCreator : public COpenMORAApp
 {
 public:
     CMapCreator();

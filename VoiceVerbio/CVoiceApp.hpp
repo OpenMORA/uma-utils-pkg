@@ -29,12 +29,12 @@
 #ifndef CVoiceApp_H
 #define CVoiceApp_H
 
-#include <CMapirMOOSApp.h>
+#include <COpenMORAMOOSApp.h>
 //#include <mrpt/base.h>
 #include "VoiceManager.hpp"
 // Any other includes..
 
-class CVoiceApp : public CMapirMOOSApp
+class CVoiceApp : public COpenMORAApp
 {
 public:
     CVoiceApp();

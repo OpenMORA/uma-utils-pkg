@@ -31,11 +31,11 @@
 
 #include <MOOS/libMOOS/App/MOOSApp.h>
 #include <mrpt/utils.h>
-#include <CMapirMOOSApp.h>
+#include <COpenMORAMOOSApp.h>
 
 using namespace mrpt::utils;
 
-class TextInterpreterApp : public CMapirMOOSApp
+class TextInterpreterApp : public COpenMORAApp
 {
 public:
 	/** Constructor */

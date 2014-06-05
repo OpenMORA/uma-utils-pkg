@@ -13,4 +13,4 @@ ADD_EXECUTABLE( ${PROJECT_NAME}
 	)
 
 # Link the executable
-TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${MOOS_LIBRARIES} ${MRPT_LIBS} "${MORA_MODULES_SOURCE_DIR}/TwitterAgent/libs/twitcurl.lib" )
+TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${MOOS_LIBRARIES} ${MRPT_LIBS} "${uma_utils_pkg_SOURCE_DIR}/TwitterAgent/libs/twitcurl.lib" )

@@ -29,10 +29,10 @@
 #ifndef CVoiceFestivalApp_H
 #define CVoiceFestivalApp_H
 
-#include <CMapirMOOSApp.h>
+#include <COpenMORAMOOSApp.h>
 #include <mrpt/base.h>
 
-class CVoiceFestivalApp : public CMapirMOOSApp
+class CVoiceFestivalApp : public COpenMORAApp
 {
 public:
     CVoiceFestivalApp();

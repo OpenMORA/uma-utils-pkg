@@ -31,7 +31,7 @@
 
 #include <Python.h>  // Include BEFORE MRPT headers to avoid #define redefinition warnings
 #include <MOOS/libMOOS/App/MOOSApp.h>
-#include <CMapirMOOSApp.h>
+#include <COpenMORAMOOSApp.h>
 
 #define M_RECV "SKYPE_RECV"
 #define M_SEND "SKYPE_SEND"
@@ -41,7 +41,7 @@
 //#define REMOTE_USER_DEF "rhodon.mapir"
 //#define CLIENT_START_WAIT 3
 
-class SkypeComm : public CMapirMOOSApp
+class SkypeComm : public COpenMORAApp
 {
 public:
     SkypeComm();

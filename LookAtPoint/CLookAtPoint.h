@@ -29,11 +29,12 @@
 #ifndef CLookAtPoint_H
 #define CLookAtPoint_H
 
-#include <mrpt/base.h>
-#include <CMapirMOOSApp.h>
+#include <COpenMORAMOOSApp.h>
+#include <mrpt/poses/CPose2D.h>
+#include <mrpt/poses/CPoint2D.h>
 
 
-class CLookAtPoint : public CMapirMOOSApp
+class CLookAtPoint : public COpenMORAApp
 {
 public:
     CLookAtPoint();

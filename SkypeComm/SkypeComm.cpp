@@ -29,6 +29,10 @@
 /** @moos_module This module manages a Skype client to enable communication with a remote skype user    
   */
 
+/** @moss_ToDo
+  *  Adapt to work with Python 3 (PyString_AsString not found)
+  */
+
 #include "SkypeComm.h"
 #include <string>
 #include <fstream>

@@ -29,13 +29,13 @@
 #ifndef CBatteryManager_H
 #define CBatteryManager_H
 
-#include <CMapirMOOSApp.h>
+#include <COpenMORAMOOSApp.h>
 #include <sstream>
 #include <iomanip>
 #include <iostream>
 
 
-class CBatteryManager : public CMapirMOOSApp
+class CBatteryManager : public COpenMORAApp
 {
 public:
     CBatteryManager();
