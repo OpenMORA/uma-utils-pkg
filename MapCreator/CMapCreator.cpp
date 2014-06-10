@@ -75,7 +75,9 @@ bool CMapCreator::OnStartUp()
 	
 	//! @moos_param   rawlog_file   (optional) Path to the rawlog file to process
 	rawlog_file	=       m_ini.read_string("","rawlog_file","",false);
+	ASSERT_FILE_EXISTS_(rawlog_file)
 
+	cout << "[MapCreator]: Parameters configuration Done " << endl;
 	return DoRegistrations();
 }
 //-------------------------------------
