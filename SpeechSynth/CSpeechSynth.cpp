@@ -26,21 +26,19 @@
    |                                                                           |
    +---------------------------------------------------------------------------+ */
 
-/**  @moos_module A module to keep the high-level tasks commanded to the robot.
-  *
+/**  @moos_module A simple module to provide easy text to speech.
+  *  The module gets the text to synthesize via the OpenMORA variable SAY, and copy it to the OS clipboard.
+  *  It is designed to work with applications such as IVONE that reproduces all text present in the clipboard.
   */
 
 #include "CSpeechSynth.hpp"
-
 #include <sstream>
 #include <iomanip>
 #include <iostream>
 
 using namespace std;
-
 using namespace mrpt;
 using namespace mrpt::utils;
-//using namespace ....
 
 
 CSpeechSynthApp::CSpeechSynthApp()
@@ -55,20 +53,11 @@ CSpeechSynthApp::~CSpeechSynthApp()
 bool CSpeechSynthApp::OnStartUp()
 {
 	// Read parameters (if any) from the mission configuration file.
-	//! @moos_param PARAM_NAME  PARAM DESCRIPTION IN ONE LINE
-	//m_MissionReader.GetConfigurationParam("my_param",m_myvar);
-
-	// There is also a MRPT-like object (this->m_ini) that is a wrapper
-	//  to read from the module config block of the current MOOS mission file.
-	// m_ini.read_int(...);
 	return DoRegistrations();
 }
 
 bool CSpeechSynthApp::Iterate()
 {
-	// Are there
-
-
 	return true;
 }
 
@@ -90,7 +79,7 @@ bool CSpeechSynthApp::OnCommandMsg( CMOOSMsg Msg )
 
 bool CSpeechSynthApp::DoRegistrations()
 {
-	//! @moos_subscribe	NEW_TASK
+	//! @moos_subscribe	SAY
 	AddMOOSVariable("SAY","SAY","SAY",0);
 	
 	RegisterMOOSVariables();
@@ -103,11 +92,9 @@ bool CSpeechSynthApp::OnNewMail(MOOSMSG_LIST &NewMail)
 	std::string cad;
 	for(MOOSMSG_LIST::iterator i=NewMail.begin();i!=NewMail.end();++i)
 	{
-
 		if (i->GetName()=="SAY")
 		{
-		
-		MOOSTrace("Received talk: %s\n",i->GetString().c_str());
+			MOOSTrace("[SpeechSynth]: Received text: %s\n",i->GetString().c_str());
 			
 			const size_t len = strlen(i->GetString().c_str()) + 1;
 			HGLOBAL hMem =  GlobalAlloc(GMEM_MOVEABLE, len);

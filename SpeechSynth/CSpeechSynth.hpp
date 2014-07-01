@@ -29,8 +29,8 @@
 #ifndef CSpeechSynth_H
 #define CSpeechSynth_H
 
-#include <MOOSLIB/MOOSApp.h>
-#include <mrpt/base.h>
+#include <MOOS/libMOOS/App/MOOSApp.h>
+#include <COpenMORAMOOSApp.h>
 
 class CSpeechSynthApp : public CMOOSApp
 {
