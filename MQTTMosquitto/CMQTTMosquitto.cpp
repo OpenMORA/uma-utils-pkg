@@ -29,7 +29,7 @@
 
 /**  @moos_module Module to enable the communication between OpenMORA and a MQTT client.
   *  MQTT is a machine-to-machine (M2M)/"Internet of Things" connectivity protocol, designed as an extremely lightweight publish/subscribe messaging transport.
-  *  This module is used to communicate the Giraff robot (running the OpenMORA architecture), with an external MQTT client in the user side (Pilot, WebRTC, etc.).
+  *  This module is used to communicate the robot (running the OpenMORA architecture), with an external MQTT client in the user side (Pilot, WebRTC, etc.).
   */
 
 
@@ -37,9 +37,9 @@
 	    MQTT Topic						<->          OpenMORA variable
   --------------------------------------------------------------
  
-  Giraff_Name/ClientACK								-->PILOT_MQTT_ACK
+  Robot_Name/ClientACK								-->PILOT_MQTT_ACK
 
-  Giraff_Name/TopologyCommand
+  Robot_Name/TopologyCommand
 			  -GetTopology							-->  (Send Variable GRAPH in Topic Topology)
 			  -ADD_NODE	label type x y				-->	ADD_NODE 
 			  -ADD_ARC labelA labelB ArcType		-->	ADD ARC 
@@ -50,7 +50,7 @@
 			  -LOAD_GRAPH filename					-->	LOAD_GRAPH
 			  -SAVE_GRAPH filename					-->	SAVE_GRAPH
 
-  Giraff_Name/NavigationCommand
+  Robot_Name/NavigationCommand
 			  -StopGiraff							-->	CANCEL_NAVIGATION
 			  -GoToNode	label						-->	GET_PATH 
 			  -GoToPoint x y						-->	NAVIGATE_TARGET
@@ -58,22 +58,22 @@
 			  -Motion v w							-->	MOTION_CMD_V + MOTION CMD_W
 			  -RandomNavigator 0/1					--> RANDOM_NAVIGATOR
 
-  Giraff_Name/MapBuildingCommand
+  Robot_Name/MapBuildingCommand
 			 -Rawlog Start/Stop						-->	SAVE_RAWLOG
   
   ----------------------------------------------------------------------------------------
-  Giraff_Name/Localization							<--	LOCALIZATION
-  Giraff_Name/Status								<--	LOCALIZATION
-  Giraff_Name/ManualMode							<--	CANCEL_NAVIGATION
-  Giraff_Name/Topology								<--	GRAPH
-  Giraff_Name/ErrorMsg								<--	ERROR_MSG
-  Giraff_Name/LaserScan								<--	LASER1
-  Giraff_Name/NavigationMode manual|ninguno			<-- Navigation mode and destiny
+  Robot_Name/Localization							<--	LOCALIZATION
+  Robot_Name/Status								<--	LOCALIZATION
+  Robot_Name/ManualMode							<--	CANCEL_NAVIGATION
+  Robot_Name/Topology								<--	GRAPH
+  Robot_Name/ErrorMsg								<--	ERROR_MSG
+  Robot_Name/LaserScan								<--	LASER1
+  Robot_Name/NavigationMode manual|ninguno			<-- Navigation mode and destiny
 							 auto|destino
 							 recovery|destino
 
-  Giraff_Name/Question msg							<--
-  Giraff_Name/Answer msg							-->
+  Robot_Name/Question msg							<--
+  Robot_Name/Answer msg							-->
 
   */
 
@@ -127,7 +127,7 @@ bool CMQTTMosquitto::OnStartUp()
 	cout << "Setting Username and Password..." << endl;	
 	// Read Connection Params
 	//-------------------------	
-	//! @moos_param user The username to connect to the MQTT broker (new sesion). It is the asigned name to the Robot, e.g: Giraff_ES4
+	//! @moos_param user The username to connect to the MQTT broker (new sesion). It is the asigned name to the Robot, e.g: Robot_ES4
 	broker_username = m_ini.read_string("","user","NO_USER_SET",true);	
 	cout << "READ: user= " << broker_username << endl;
 
@@ -215,7 +215,7 @@ bool CMQTTMosquitto::OnStartUp()
 	timeStamp_last_laser = mrpt::system::now();
 
 	
-	is_motion_command_set = false;		//indicates (true/false) if a motion command is active (To control Giraff from client)
+	is_motion_command_set = false;		//indicates (true/false) if a motion command is active (To control robot from client)
 	return DoRegistrations();
 
 }
@@ -333,8 +333,8 @@ bool CMQTTMosquitto::DoRegistrations()
 	//! @moos_subscribe ROBOT_TOPOLOGICAL_PLACE
 	AddMOOSVariable( "ROBOT_TOPOLOGICAL_PLACE", "ROBOT_TOPOLOGICAL_PLACE", "ROBOT_TOPOLOGICAL_PLACE", 0);
 
-	//! @moos_subscribe GIRAFF_CONTROL_MODE
-	AddMOOSVariable( "GIRAFF_CONTROL_MODE", "GIRAFF_CONTROL_MODE", "GIRAFF_CONTROL_MODE", 0);
+	//! @moos_subscribe ROBOT_CONTROL_MODE
+	AddMOOSVariable( "ROBOT_CONTROL_MODE", "ROBOT_CONTROL_MODE", "ROBOT_CONTROL_MODE", 0);
 
 	//! @moos_subscribe GET_PATH
 	AddMOOSVariable( "GET_PATH", "GET_PATH", "GET_PATH", 0);	
@@ -371,8 +371,8 @@ bool CMQTTMosquitto::OnNewMail(MOOSMSG_LIST &NewMail)
 				on_publish(NULL, (broker_username + "/" + "Localization").c_str(), strlen(message.c_str()), message.c_str());
 
 
-				//Get aditionaly the Working Mode (GIRAFF_CONTROL_MODE: 0=Manual=Pilot, 2=Autonomous=OpenMORA)
-				CMOOSVariable * pVar2 = GetMOOSVar("GIRAFF_CONTROL_MODE");
+				//Get aditionaly the Working Mode (ROBOT_CONTROL_MODE: 0=Manual=Pilot, 2=Autonomous=OpenMORA)
+				CMOOSVariable * pVar2 = GetMOOSVar("ROBOT_CONTROL_MODE");
 				if(pVar2)
 				{
 					double current_mode = pVar2->GetDoubleVal();
@@ -408,7 +408,7 @@ bool CMQTTMosquitto::OnNewMail(MOOSMSG_LIST &NewMail)
 		}
 
 		//Inform Client about the current Navigation MODE		
-		if( it->GetName()=="GIRAFF_CONTROL_MODE")
+		if( it->GetName()=="ROBOT_CONTROL_MODE")
 		{			
 			cout << "Sending Current Navigation Mode to Client: " << it->GetString() << endl;
 			size_t mode = (size_t)(it->GetDouble());
@@ -659,7 +659,7 @@ void CMQTTMosquitto::on_message(const mosquitto_message *message)
 				std::string gotox = list.at(0);
 				std::string gotoy = list.at(1);				
 				const string target = format("[%.03f %.03f]", atof(gotox.c_str()),atof(gotoy.c_str()));
-				//! @moos_publish NAVIGATE_TARGET Set destination ([x y]) for Giraff to go autonomously
+				//! @moos_publish NAVIGATE_TARGET Set destination ([x y]) for robot to go autonomously
 				m_Comms.Notify("NAVIGATE_TARGET",target);
 				printf("%s\n",target.c_str());
 			}
@@ -697,8 +697,8 @@ void CMQTTMosquitto::on_message(const mosquitto_message *message)
 				time_last_motion_command = mrpt::system::now();
 				is_motion_command_set = true;
 
-				//! @moos_publish GIRAFF_CONTROL_MODE The Giraff working mode: 0=Manual=Pilot, 2=Autonomous=OpenMORA		
-				m_Comms.Notify("GIRAFF_CONTROL_MODE", 2);
+				//! @moos_publish ROBOT_CONTROL_MODE The robot working mode: 0=Manual=Pilot, 2=Autonomous=OpenMORA		
+				m_Comms.Notify("ROBOT_CONTROL_MODE", 2);
 				//! @moos_publish MOTION_CMD_V Set robot linear speed
 				m_Comms.Notify("MOTION_CMD_V",atof(setV.c_str()));
 				//! @moos_publish MOTION_CMD_W Set robot angular speed

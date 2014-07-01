@@ -34,13 +34,6 @@
 #include <mosquitto.h>
 #include <mosquittopp.h>
 
-/*#include <mrpt/hwdrivers/CActivMediaRobotBase.h>
-
-#include <mrpt/hwdrivers/CSerialPort.h>
-#include <mrpt/base.h>
-
-#include "CGiraffCommunication.h"
-#include "CGiraffMotorsCom.h"*/
 using namespace std;
 using namespace mosqpp;
 
