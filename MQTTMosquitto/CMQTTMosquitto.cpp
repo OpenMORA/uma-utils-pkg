@@ -40,7 +40,7 @@
   Robot_Name/ClientACK								-->PILOT_MQTT_ACK
 
   Robot_Name/TopologyCommand
-			  -GetTopology							-->  (Send Variable GRAPH in Topic Topology)
+			  -GetTopology							--> (Send Variable GRAPH in Topic Topology)
 			  -ADD_NODE	label type x y				-->	ADD_NODE 
 			  -ADD_ARC labelA labelB ArcType		-->	ADD ARC 
 			  -REMOVE_NODE label					-->	REMOVE_NODE
@@ -63,8 +63,8 @@
   
   ----------------------------------------------------------------------------------------
   Robot_Name/Localization							<--	LOCALIZATION
-  Robot_Name/Status								<--	LOCALIZATION
-  Robot_Name/ManualMode							<--	CANCEL_NAVIGATION
+  Robot_Name/Status									<--	LOCALIZATION
+  Robot_Name/ManualMode								<--	CANCEL_NAVIGATION
   Robot_Name/Topology								<--	GRAPH
   Robot_Name/ErrorMsg								<--	ERROR_MSG
   Robot_Name/LaserScan								<--	LASER1
@@ -73,7 +73,7 @@
 							 recovery|destino
 
   Robot_Name/Question msg							<--
-  Robot_Name/Answer msg							-->
+  Robot_Name/Answer msg								-->
 
   */
 

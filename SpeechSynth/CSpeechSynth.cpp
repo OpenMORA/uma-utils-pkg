@@ -42,7 +42,6 @@ using namespace mrpt::utils;
 
 
 CSpeechSynthApp::CSpeechSynthApp()
-//	: var (init_val), ...
 {
 }
 
