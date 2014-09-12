@@ -72,6 +72,7 @@
 							 auto|destino
 							 recovery|destino
 
+  Robot_Name/Parking								--> PARKING
   Robot_Name/Question msg							<--
   Robot_Name/Answer msg								-->
 
@@ -752,6 +753,14 @@ void CMQTTMosquitto::on_message(const mosquitto_message *message)
 	{
 		//! @moos_publish PILOT_MQTT_ACK Flag to indicate that communication with client is alive.
 		m_Comms.Notify("PILOT_MQTT_ACK","1");
+	}
+
+	//AutoDocking
+	else if(!strcmp(message->topic, (broker_username + "/" +"Parking").c_str() ))
+	{
+		//! @moos_publish PARKING Flag to indicate that the user has requested the AutoDocking process
+		double parking_status = atof(aux);
+		m_Comms.Notify("PARKING",parking_status);
 	}
 }
 
