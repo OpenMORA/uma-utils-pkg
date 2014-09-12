@@ -78,12 +78,12 @@ protected:
 	// DATA. Your local variables here...
 
 	
-	mrpt::slam::CObservation2DRangeScanPtr obs;
+	mrpt::slam::CObservation2DRangeScanPtr obs;			//The laser scans
 	const static unsigned int TAMMAXIMO=1300;
     float posX[TAMMAXIMO];
     float posY[TAMMAXIMO];
-	unsigned int TAM;
-	bool ok;
+	unsigned int TAM;									//Size of laser scans
+	bool ok;											//whether the pattern is found or not
 	int p1ini,p1fin,p2ini,p2fin,p3ini,p3fin;
 	float valorafinal,valorbfinal;
     
@@ -120,22 +120,19 @@ protected:
 	float punto_inicio;
 	float punto_fin;
 	double park;
-    bool miparking;
+    //bool miparking;
 	float charge;
 
     bool patronverdadero;
 	bool f2activada;
-	bool robotenposicion;
-    float pruebafich;
+	//bool robotenposicion;
+    //float pruebafich;
 	float contfases2;
 
 	bool debug;		////cga:if true, visual information is shown.
-	
+	bool go_docking;
 
 	//cga:declaration of win as a pointer 
 	mrpt::gui::CDisplayWindowPlots *win;
-    
-	
-
 };
 #endif

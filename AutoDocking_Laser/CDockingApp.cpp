@@ -119,32 +119,40 @@ bool CDockingApp::OnStartUp()
     win=new CDisplayWindowPlots("Docking debug window");
 
 
-  //Set initial values
-  f2activada=false;
-  robotenposicion=false;
-  contador_no_encontrados=0;
-  encontrados=0;
-  patronverdadero=false;
-  angulovi=0;
-  angulovf=0;
-  disv=0;
-  pruebafich=0;
+  //-------------------------
+  // Set initial state
+  //-------------------------
+  f2activada = false;				//Init the sistem as Far from docking!  
+  contador_no_encontrados = 0;		//number of non-matches
+  encontrados = 0;					//number of matches
+  patronverdadero = false;			//only after 4 consecutive matches, we declare the pattern as the correct one
+  angulovi = 0;
+  angulovf = 0;
+  disv = 0;  
+  ok_anterior = false;				//Was the pattern found in the previous scan?
+  punto_inicio = 0;
+  punto_fin = 0;
+  contfases2 = 0;
 
-  ok_anterior=false;
-  punto_inicio=0;
-  punto_fin=0;
-  contfases2=0;
-  miparking=true;
+  //miparking=true;
+  //robotenposicion = false;
+  //pruebafich = 0;
+
+  //Start doing nothing!!
+  go_docking = false;
+  charge = 1.0;			//is charging
+  park = 0.0;			//is not parking
 
 
   return DoRegistrations();
-
-  //! @moos_publish MOTION_CMD_V The linear robot speed
-  //! @moos_publish MOTION_CMD_W The angular robot speed
 }
 
 
-void CDockingApp::dibujar_puntos(int p1i,int p1f,int p2i,int p2f,int p3i,int p3f){
+//---------------------------------------------------------------------
+// dibujar_puntos: Display Laser detected points in the "debug" window
+//---------------------------------------------------------------------
+void CDockingApp::dibujar_puntos(int p1i,int p1f,int p2i,int p2f,int p3i,int p3f)
+{
   mrpt::slam::CSimplePointsMap TheMap,TheMap2;
   int i;
   mrpt::math::CVectorFloat xs,ys,zs,xs1,ys1,zs1;
@@ -192,36 +200,35 @@ void CDockingApp::dibujar_puntos(int p1i,int p1f,int p2i,int p2f,int p3i,int p3f
   //sleep(150);
 }
 
-void CDockingApp::comprobar_patron_verdadero(int pi,int pf){
+//---------------------------------------------------------
+// Check that found pattern matchs those previously found
+//---------------------------------------------------------
+void CDockingApp::comprobar_patron_verdadero(int pi,int pf)
+{
+	float ai=0;
+	float af=0;
+	float d=0;
+	float aux=20;
 
-  float ai=0;
-  float af=0;
-  float d=0;
-  float aux=20;
+	ai=pi*angulo_giro_hok;
+	af=pf*angulo_giro_hok;
+	d=obs->scan[pi]*100;
+  
+	ok=false;
 
-  ai=pi*angulo_giro_hok;
-  af=pf*angulo_giro_hok;
-  d=obs->scan[pi]*100;
-
-
-  ok=false;
-
-  if((angulovi<(ai+aux))&&(angulovi>(ai-aux))){//punto inicio correcto
-
-      if((angulovf<(af+aux))&&(angulovf>(af-aux))){ // punto fin correcto
-
-          if((disv<(d+aux))&&(disv>(d-aux))){ //distancia correcta
-
-              ok=true;
-              angulovi=ai;
-              angulovf=af;
-              disv=d;
-
-            }
-
-        }
-
-    }
+	if((angulovi<(ai+aux))&&(angulovi>(ai-aux)))
+	{//punto inicio correcto
+		if((angulovf<(af+aux))&&(angulovf>(af-aux)))
+		{ // punto fin correcto
+			if((disv<(d+aux))&&(disv>(d-aux)))
+			{ //distancia correcta
+				ok = true;			//pattern found!!
+				angulovi = ai;
+				angulovf = af;
+				disv = d;
+			}
+		}
+	}
 }
 
 
@@ -279,7 +286,12 @@ void CDockingApp::comprobar_pendientes_rectas(float r1b,float r2b,float r3b){
 }
 
 
-void CDockingApp::mover_fase2(float cp,float dis,float cory,float corx){
+
+//--------------------------------------------------------------------------
+//  mover_fase2 --> Mode of operation when we are close to the docking
+//--------------------------------------------------------------------------
+void CDockingApp::mover_fase2(float cp,float dis,float cory,float corx)
+{
   float agiro_rad_rap;
   float agiro_rad_len;
   float volt=0;
@@ -290,17 +302,19 @@ void CDockingApp::mover_fase2(float cp,float dis,float cory,float corx){
   agiro_rad_rap=DEG2RAD(agiro_f2_rap);
   agiro_rad_len=DEG2RAD(agiro_f2_len);
 
-  cout << "estoy en fase 2 " << endl;
+  cout << "[AutoDocking_Laser] Working in phase 2 " << endl;
   //cout << "angulo central: " << angulo_central << endl;
   //cout << "centro patron: " << cp << endl;
 
   contfases2++;
-  if(contfases2=20){
-      if(!(((corx<10)&&(corx>-10))||((cory<10)&&(cory>-10)))){
-          f2activada=false;
+  if(contfases2=20)
+  {
+      if(!(((corx<10)&&(corx>-10))||((cory<10)&&(cory>-10))))
+	  {
+          f2activada = false;	//return to far mode operation
           contfases2=0;
-        }
-    }
+      }
+  }
 
   if((cp<=(angulo_central+3))&&(cp>=(angulo_central-3))){
       m_Comms.Notify("MOTION_CMD_W",0.0);
@@ -339,6 +353,11 @@ void CDockingApp::mover_fase2(float cp,float dis,float cory,float corx){
         }
     }
 }
+
+
+//--------------------------------------------------
+// MoverRobot -> Pattern has been found! Go for it
+//--------------------------------------------------
 void CDockingApp::MoverRobot()
 {
 
@@ -403,70 +422,24 @@ void CDockingApp::MoverRobot()
 
 
 
-  if(f2activada){//if2
-      //cout << "estoy en fase2" << endl;
-      distancia_a_cp=(obs->scan[poscpatron])*100;
-
+  //Check mode of operation (close or far from docking)
+  if(f2activada)
+  {
+      //Phase 2 -> Close to the docking
+      distancia_a_cp = (obs->scan[poscpatron])*100;
       mover_fase2(centropatron,distancia_a_cp,aprima,cortex);
-    }
-  else{ //else2
-      if((aprima>-4)&&(aprima<-2)){//if2
-          /*
-                                if (pruebafich<1){
-                                        pruebafich++;
-                fich.open("F:\\DatosHokuyo.txt");
-
-                            if (fich.is_open()){
-
-
-                                    fich << " x=[ ";
-                                        unsigned int i;
-                                        for(i=0;i<(TAM-1);i++)
-                                        {
-                                                 fich << posX[i];
-                                                 fich << " ";
-                                        }
-                                        fich <<"]" << endl<<endl<<endl;
-
-                                        fich << " y=[ ";
-                                        for(i=0;i<(TAM-1);i++)
-                                        {
-                                                 fich << posY[i];
-                                                 fich << " ";
-                                        }
-                                        fich <<"]" << endl<<endl;
-
-                                        fich << " valor a: " << valorafinal << endl;
-                                        fich << " valor b: " << valorbfinal << endl;
-                                        fich << " posx1ini: " << posX[p1ini] << endl;
-                                        fich << " posy1ini: " << posY[p1ini] << endl;
-                                        fich << " posx1fin: " << posX[p1fin] << endl;
-                                        fich << " posy1fin: " << posY[p1fin] << endl;
-
-                                        fich << " posx2ini: " << posX[p2ini] << endl;
-                                        fich << " posy2ini: " << posY[p2ini] << endl;
-                                        fich << " posx2fin: " << posX[p2fin] << endl;
-                                        fich << " posy2fin: " << posY[p2fin] << endl;
-
-                                        fich << " posx3ini: " << posX[p3ini] << endl;
-                                        fich << " posy3ini: " << posY[p3ini] << endl;
-                                        fich << " posx3fin: " << posX[p3fin] << endl;
-                                        fich << " posy3fin: " << posY[p3fin] << endl;
-
-
-                                        fich.close();
-                                        }
-                                else{
-
-                                                 cout << "El fichero no ha podido abrirse..." << endl;
-                                }
-                                }
-                */
-          f2activada=true;
+  }
+  else
+  {
+	  //Phase 1 -> Far from the docking
+      if((aprima>-4)&&(aprima<-2))
+	  {   
+          f2activada = true; //Activate phase 2
           m_Comms.Notify("MOTION_CMD_V",0.0);
           m_Comms.Notify("MOTION_CMD_W",0.0);
-        }//if2
-      else{//else3
+      }
+      else
+	  {
           if(aprima<=-2){
               if(centropatron>angulo_central){
                   m_Comms.Notify("MOTION_CMD_W",agiro_rad);
@@ -533,11 +506,10 @@ void CDockingApp::MoverRobot()
             }
         }//else3
     }//else2
-
-
 }
 
-void CDockingApp::ComprobacionFinal(){
+void CDockingApp::ComprobacionFinal()
+{
 
   int indaux;
   int errores,npos;
@@ -643,96 +615,110 @@ void CDockingApp::ComprobacionFinal(){
                 }//if2
         }//for1
    */
-  if(errores<2){
+
+  if(errores<2)
+  {
       ok=true;
       valorafinal=va;
       valorbfinal=vb;
-    }
-  else{
-      ok=false;
-    }
+  }
+  else
+	ok=false;
 }
 
-void CDockingApp::Obtener_puntos_plano(){
+//--------------------------------------
+// Obtener_puntos_plano : Read Laser
+//--------------------------------------
+void CDockingApp::Obtener_puntos_plano()
+{
+	unsigned int ind;
+	float dis,px,py;
+	float ang_hokuyo = 0;
+	float ang_calculo = 0;
+	CSerializablePtr obj;
+	float cua1,cua2,cua3,apertura;
 
-  unsigned int ind;
-  float dis,px,py;
-  float ang_hokuyo=0;
-  float ang_calculo=0;
-  CSerializablePtr obj;
-  float cua1,cua2,cua3,apertura;
+	//Get laser readings
+	CMOOSVariable *PLaser= GetMOOSVar("LASER1");
+	mrpt::utils::RawStringToObject(PLaser->GetStringVal(),obj);
+	if (obj && IS_CLASS(obj,CObservation2DRangeScan))
+		obs = CObservation2DRangeScanPtr(obj);
+	else
+		printf("[CAutoDocking_Laser] ERROR: LASER1 is not a CObservation2DRangeScan \n");
 
-  CMOOSVariable *PLaser= GetMOOSVar("LASER1");
+	apertura=obs->aperture;
+	apertura=RAD2DEG(apertura);
+	TAM=obs->scan.size();
 
-  StringToObject(PLaser->GetStringVal(),obj);
-  if (obj && IS_CLASS(obj,CObservation2DRangeScan))
-    {
-      obs = CObservation2DRangeScanPtr(obj);
+	angulo_giro_hok=apertura/TAM;
+	angulo_central=apertura/2;
 
-    }
+	cua1=(apertura/2)-90;
+	cua2=apertura/2;
+	cua3=(apertura/2)+90;
 
-  apertura=obs->aperture;
-  apertura=RAD2DEG(apertura);
-  TAM=obs->scan.size();
+	//initialize empty vector
+	for(ind=0;ind<TAM;ind++)
+	{
+		posX[ind]=0;
+		posY[ind]=0;
+	}
 
-  angulo_giro_hok=apertura/TAM;
-  angulo_central=apertura/2;
-
-  cua1=(apertura/2)-90;
-  cua2=apertura/2;
-  cua3=(apertura/2)+90;
-
-
-  for(ind=0;ind<TAM;ind++){
-      posX[ind]=0;
-      posY[ind]=0;
-    }
-
-
-  for(ind=0;ind<obs->scan.size();ind++){
-      dis=obs->scan[ind]*100;
-      if((dis<1)||(dis>200)){
-          px=0;
-          py=0;
-        }
-      else{
-          if(ang_hokuyo<=cua1){
-              ang_calculo=cua1-ang_hokuyo;
-              ang_calculo=DEG2RAD(ang_calculo);
-              py=sin(ang_calculo)*dis;
-              px=cos(ang_calculo)*dis;
-              py=py*(-1); //en esta zona la posicion y es negativa
-            }
-          else{
-              if((ang_hokuyo>cua1)&&(ang_hokuyo<=cua2)){
-                  ang_calculo=ang_hokuyo-cua1;
-                  ang_calculo=DEG2RAD(ang_calculo);
-                  py=sin(ang_calculo)*dis;
-                  px=cos(ang_calculo)*dis;
-                }
-              else{
-                  if((ang_hokuyo>cua2)&&(ang_hokuyo<=cua3)){
-                      ang_calculo=ang_hokuyo-cua2;
-                      ang_calculo=DEG2RAD(ang_calculo);
-                      py=cos(ang_calculo)*dis;
-                      px=sin(ang_calculo)*dis;
-                      px=px*(-1);//en esta zona la x es negativa
-                    }
-                  else{
-                      ang_calculo=ang_hokuyo-cua3;
-                      ang_calculo=DEG2RAD(ang_calculo);
-                      py=sin(ang_calculo)*dis;
-                      px=cos(ang_calculo)*dis;
-                      px=px*(-1);//en esta zona la x es negativa
-                      py=py*(-1);//en esta zona la x es negativa
-                    }
-                }
-            }
-        }
-      posX[ind]=px;
-      posY[ind]=py;
-      ang_hokuyo=ang_hokuyo+angulo_giro_hok;
-    }//end for
+	//Check readings from laser
+	for(ind=0;ind<obs->scan.size();ind++)
+	{
+		dis=obs->scan[ind]*100;
+		//Ignore out of range values
+		if((dis<1)||(dis>200))
+		{
+			px=0;
+			py=0;
+		}
+		else
+		{
+			if(ang_hokuyo<=cua1)
+			{
+				ang_calculo=cua1-ang_hokuyo;
+				ang_calculo=DEG2RAD(ang_calculo);
+				py=sin(ang_calculo)*dis;
+				px=cos(ang_calculo)*dis;
+				py=py*(-1); //en esta zona la posicion "y" es negativa
+			}
+			else
+			{
+				if((ang_hokuyo>cua1)&&(ang_hokuyo<=cua2))
+				{
+					ang_calculo=ang_hokuyo-cua1;
+					ang_calculo=DEG2RAD(ang_calculo);
+					py=sin(ang_calculo)*dis;
+					px=cos(ang_calculo)*dis;
+				}
+				else
+				{
+					if((ang_hokuyo>cua2)&&(ang_hokuyo<=cua3))
+					{
+						ang_calculo=ang_hokuyo-cua2;
+						ang_calculo=DEG2RAD(ang_calculo);
+						py=cos(ang_calculo)*dis;
+						px=sin(ang_calculo)*dis;
+						px=px*(-1);//en esta zona la x es negativa
+					}
+					else
+					{
+						ang_calculo=ang_hokuyo-cua3;
+						ang_calculo=DEG2RAD(ang_calculo);
+						py=sin(ang_calculo)*dis;
+						px=cos(ang_calculo)*dis;
+						px=px*(-1);//en esta zona la x es negativa
+						py=py*(-1);//en esta zona la x es negativa
+					}
+				}
+			}
+		}
+		posX[ind]=px;
+		posY[ind]=py;
+		ang_hokuyo=ang_hokuyo+angulo_giro_hok;
+	}//end for
 }
 
 
@@ -849,13 +835,14 @@ void CDockingApp::Buscar_Patron_Completo(unsigned int pinicio,unsigned int pfin)
 
   ok=false;
   ind=pinicio;
-  while((ind<(pfin-10))&&(!ok)){//while1
-
-      if((posX[ind]==0)&&(posY[ind]==0)){//if1
-          //no hace nada, hueco
-
-        }//if1
-      else{//else1
+  while((ind<(pfin-10))&&(!ok)) //while1
+  {
+      if((posX[ind]==0)&&(posY[ind]==0))
+	  {//if1
+		//no hace nada, hueco
+      }//if1
+      else
+	  {//else1
           BuscaPatron(ind,indaux,lon1,vr1a,vr1b);//busca primer subpatron
           if((lon1>lon_sp1i)&&(lon1<lon_sp1s)){//if1
               p1ini=ind;
@@ -903,12 +890,12 @@ void CDockingApp::Buscar_Patron_Completo(unsigned int pinicio,unsigned int pfin)
 
                                               if(ok){
                                                   //comprobar_pendientes_rectas(vr1b,vr2b,vr3b);
-                                                  if(patronverdadero){
+                                                  if(patronverdadero)
+												  {
                                                       comprobar_patron_verdadero(p1ini,p3fin);
-                                                    }
-                                                }
-
-                                            }
+                                                  }
+                                              }
+                                          }
 
                                         }//if5
                                     }
@@ -931,178 +918,140 @@ void CDockingApp::Buscar_Patron_Completo(unsigned int pinicio,unsigned int pfin)
 
 bool CDockingApp::Iterate()
 {
-
-  float angf1=0;
-  float angf2=0;
-  float dispatron=0;
+	//Initialization  
+	float angf1 = 0;
+	float angf2 = 0;
+	float dispatron = 0;  
+	ok = false;
+	p1ini = 0;
+	p1fin = 0;
+	p2ini = 0;
+	p2fin = 0;
+	p3ini = 0;
+	p3fin = 0;
+	valorafinal = 0;
+	valorbfinal = 0;
   
-  ok=false;
-  p1ini=0;
-  p1fin=0;
-  p2ini=0;
-  p2fin=0;
-  p3ini=0;
-  p3fin=0;
-  valorafinal=0;
-  valorbfinal=0;
-  
+	
+	//Is module active?
+	if( go_docking )
+	{
+		// 1- Get Laser readings
+		//----------------------
+		Obtener_puntos_plano();
 
-  CMOOSVariable *PParking= GetMOOSVar("PARKING");
-  park=atof(PParking->GetAsString().c_str());
+		// 2- Search pattern
+		//---------------------
+		// Was the pattern found in the previous scan? 
+		//If so, reduce the search range to improve computation speed
+		if(ok_anterior)
+		{
+			if((punto_inicio>100)&&(punto_fin<(TAM-100)))			
+				Buscar_Patron_Completo(punto_inicio-100,punto_fin+100);
+			else
+			{
+				if(punto_inicio>100)
+					Buscar_Patron_Completo(punto_inicio-100,TAM);				
+				else
+					Buscar_Patron_Completo(0,punto_fin+100);
+			}
+		}
+		else
+		{ //No luck- Search the pattern within all the Laser scan
+			Buscar_Patron_Completo(0,TAM);
+		}
 
-  CMOOSVariable *PCharge= GetMOOSVar("Is_Charging");
-  charge=PCharge->GetDoubleVal();
+		
+		// 3- Check if pattern has been found
+		//-------------------------------------
+		if(ok)
+		{
+			encontrados++;					//increase the number of consecutive matches
+			contador_no_encontrados = 0.0;	//rested non-matches
 
-  if((park==1)&&(charge==0))
-    {
+			if(encontrados==1.0)			//first time the pattern has been found!
+			{
+				//Save the angles and distance of the match for future matches.
+				angf1 = p1ini*angulo_giro_hok;
+				angf2 = p3fin*angulo_giro_hok;
+				dispatron = obs->scan[p1ini]*100;
+				angulovi = angf1;
+				angulovf = angf2;
+				disv = dispatron;
+				printf("[AutoDocking_Laser] FIRST TIME - pattern found at angles (%.2f %.2f) at %.2f cm\n",angf1,angf2,dispatron);
+			}
+			else
+			{
+				//Check that the found pattern complies with previous matches!
+				comprobar_patron_verdadero(p1ini,p3fin);
+				if(ok)
+				{
+					printf("[AutoDocking_Laser] Pattern found at angles (%.2f %.2f) at %.2f cm\n",angulovi,angulovf,disv);
+					contador_no_encontrados = 0.0;
+					if (encontrados == 4.0)
+						patronverdadero = true;		//we can start moving the robot!
+				}
+				else
+				{					
+					printf("[AutoDocking_Laser] ERROR: There was a problem with the found pattern. Restarting!\n");
+					encontrados = 0.0;			//reset consecutive matches
+					contador_no_encontrados++;
+				}
+			}
+			
+			// 4- Move robot
+			//---------------
+			if(patronverdadero)		//only after 4 consecutive matches, we declare the pattern as the correct one (patronverdadero)
+				MoverRobot();
+			
+			// 5- Debug window?
+			//-----------------
+			if (debug) dibujar_puntos(p1ini,p1fin,p2ini,p2fin,p3ini,p3fin);
 
-      Obtener_puntos_plano();
-
-      if(ok_anterior){
-
-          if((punto_inicio>100)&&(punto_fin<(TAM-100))){
-              Buscar_Patron_Completo(punto_inicio-100,punto_fin+100);
-            }
-          else{
-              if(punto_inicio>100){
-                  Buscar_Patron_Completo(punto_inicio-100,TAM);
-                }
-              else{
-                  Buscar_Patron_Completo(0,punto_fin+100);
-                }
-            }
-
-        }
-      else{
-          Buscar_Patron_Completo(0,TAM);
-
-        }
-
-      if(ok){
-          encontrados++;
-
-          if(patronverdadero){
-
-              MoverRobot();
-            }
-          else{
-
-              if(encontrados==1){
-                  angf1=p1ini*angulo_giro_hok;
-                  angf2=p3fin*angulo_giro_hok;
-
-                  dispatron=obs->scan[p1ini]*100;
-                  angulovi=angf1;
-                  angulovf=angf2;
-                  disv=dispatron;
-                  printf("PATRON ENCONTRADO ENTRE LOS ANGULOS %f %f A %f CM\n",angf1,angf2,dispatron);
-                }
-              else{
-                  if(encontrados<4){
-                      comprobar_patron_verdadero(p1ini,p3fin);
-                      if(!ok){
-                          encontrados=0;
-                          contador_no_encontrados++;
-                          cout << endl <<"PATRON  NO ENCONTRADO" << endl;
-                        }
-                      else{
-                          printf("PATRON ENCONTRADO ENTRE LOS ANGULOS %f %f A %f CM\n",angf1,angf2,dispatron);
-                          contador_no_encontrados=0;
-                        }
-
-                    }
-                  else{
-                      if(encontrados==4){
-
-                          comprobar_patron_verdadero(p1ini,p1fin);
-                          if(ok){
-                              printf("PATRON ENCONTRADO ENTRE LOS ANGULOS %f %f A %f CM\n",angf1,angf2,dispatron);
-                              patronverdadero=true;
-                              contador_no_encontrados=0;
-                            }
-                          else{
-                              encontrados=0;
-                              contador_no_encontrados++;
-                              cout << endl <<"PATRON  NO ENCONTRADO" << endl;
-                            }
-                        }
-                    }
-
-                }
-            }
-
-
-
-
-          if(encontrados>=0){
-              //cga:painting points iif debug==true
-              if (debug) dibujar_puntos(p1ini,p1fin,p2ini,p2fin,p3ini,p3fin);
-              angf1=p1ini*angulo_giro_hok;
-              angf2=p3fin*angulo_giro_hok;
-              dispatron=0;
-              dispatron=obs->scan[p1ini]*100;
-              if(encontrados==4){
-                  patronverdadero=true;
-                  angulovi=angf1;
-                  angulovf=angf2;
-                  disv=dispatron;
-                }
-              printf("PATRON ENCONTRADO ENTRE LOS ANGULOS %f %f A %f CM\n",angf1,angf2,dispatron);
-
-              contador_no_encontrados=0;
-              //MoverRobot();
-            }
-        }
-      else{
-          encontrados=0;
-          contador_no_encontrados++;
-          cout << endl <<"PATRON  NO ENCONTRADO" << endl;
-        }
-
-      if(contador_no_encontrados>2000){
-          //cout<< "NO SE ENCUENTRA EL PATRON POR NINGUN SITIO" << endl;
-
-          m_Comms.Notify("PARKING",0.0);
-        }
-      else{
-          if(contador_no_encontrados>200){
-              //m_Comms.Notify("MOTION_CMD_W",DEG2RAD(agiro_mover));
-            }
-          else{
-              if(contador_no_encontrados>10){
-                  //patronverdadero=false;
-                  //m_Comms.Notify("MOTION_CMD_W",0);
-                }
-            }
-        }
+			//angf1 = p1ini*angulo_giro_hok;
+			//angf2 = p3fin*angulo_giro_hok;			
+			//dispatron = obs->scan[p1ini]*100;
+			//if(encontrados==4)
+			//{
+			//	patronverdadero = true;
+			//	angulovi = angf1;
+			//	angulovf = angf2;
+			//	disv = dispatron;
+			//}
+			//contador_no_encontrados=0;	//rested non-matches
+			//printf("PATRON ENCONTRADO ENTRE LOS ANGULOS %f %f A %f CM\n",angf1,angf2,dispatron);
+		}		
+		else
+		{	//Pattern NOT-found!
+			encontrados = 0;			//reset consecutive matches
+			contador_no_encontrados++;	//increase consecutive non-matches
+			printf("[AutoDocking_Laser]: ERROR [%.1f] Pattern not found within the lasser scan. Retrying.\n", contador_no_encontrados);
+			m_Comms.Notify("MOTION_CMD_V",0.0);
+			m_Comms.Notify("MOTION_CMD_W",0.0);
+			patronverdadero = false;
+		}
 
 
 
-    }// end if(park)
+		//Problems finding the pattern?
+		//-------------------------------		
+		if(contador_no_encontrados>20)
+		{
+			//Make the robot spin			
+			m_Comms.Notify("MOTION_CMD_W",DEG2RAD(agiro_mover));
+			m_Comms.Notify("MOTION_CMD_V",0.0);
+			patronverdadero = false;
+		}
+		else if(contador_no_encontrados>2000)
+		{
+			cout<< "****NO SE ENCUENTRA EL PATRON POR NINGUN SITIO. Cancelando AutoDocking request****" << endl;
+			m_Comms.Notify("PARKING",0.0);
+		}	
+	}// end if(go_docking)
 
-
-  if((charge==1)&&(PCharge->IsFresh()))
-    {
-
-      m_Comms.Notify("MOTION_CMD_V",0.0);
-      m_Comms.Notify("MOTION_CMD_W",0.0);
-      m_Comms.Notify("PARKING",0.0);
-      m_Comms.Notify("ENABLE_MOTORS",-1.0);
-
-
-
-      PCharge->SetFresh(false);
-      printf("Parking operation finished\n");
-      miparking=false;
-      f2activada=false;
-      robotenposicion=false;
-      patronverdadero=false;
-      contfases2=0;
-
-    }
-  return true;
-
+	return true;
 }
+
 
 bool CDockingApp::OnConnectToServer()
 {
@@ -1142,24 +1091,85 @@ bool CDockingApp::DoRegistrations()
 }
 
 
+
 bool CDockingApp::OnNewMail(MOOSMSG_LIST &NewMail)
 {
   //cga:Standard for OpenMore modules
   //cga:This function will close the module when the "SHUTDOWN" message is received
 
-  std::string cad;
-  for(MOOSMSG_LIST::iterator i=NewMail.begin();i!=NewMail.end();++i)
-    {
-      if( (i->GetName()=="SHUTDOWN") && (MOOSStrCmp(i->GetString(),"true")) )
-        {
-          // Disconnect comms:
-          MOOSTrace("Closing Module \n");
-          this->RequestQuit();
-        }
+	std::string cad;	
+	for (MOOSMSG_LIST::const_iterator it=NewMail.begin();it!=NewMail.end();++it)
+	{
+		const CMOOSMsg &m = *it;
 
-    }
+		if( MOOSStrCmp(m.GetKey(),"Is_Charging") )
+		{
+			//Update charging status
+			charge = m.GetDouble();
 
-  UpdateMOOSVariables(NewMail);
+			//Did we success in the Autodking?
+			if( (go_docking)&&(charge==1.0) )
+			{
+				printf("[CAutoDocking_Laser] SUCCESS! Docking completed!\n");
+				go_docking = false;
+
+				//Stop robot
+				m_Comms.Notify("MOTION_CMD_V",0.0);
+				m_Comms.Notify("MOTION_CMD_W",0.0);
+				//Cancel Autodocking request
+				m_Comms.Notify("PARKING",0.0);
+				
+				//-------------------------
+				// Set initial state
+				//-------------------------
+				f2activada = false;				//Init the sistem as Far from docking!  
+				contador_no_encontrados = 0;
+				encontrados = 0;
+				patronverdadero = false;
+				angulovi = 0;
+				angulovf = 0;
+				disv = 0;  
+				ok_anterior = false;
+				punto_inicio = 0;
+				punto_fin = 0;
+				contfases2 = 0;				
+			}
+		}
+		
+		if( MOOSStrCmp(m.GetKey(),"PARKING") )
+		{
+			//Update PARKING status
+			park = m.GetDouble();
+			
+			if (park==1.0)
+			{
+				if(charge==0.0)
+				{
+					printf("[CAutoDocking_Laser] Starting Autodocking process...\n");
+					go_docking = true;
+				}
+				else
+				{
+					printf("[CAutoDocking_Laser] Requested Autodocking process, but ALREADY CHARGING! Disabling request.\n");
+					park = 0.0;
+					m_Comms.Notify("PARKING",0.0);
+				}
+			}
+			else
+			{
+				printf("[CAutoDocking_Laser] Autodocking request CANCELED.\n");
+				go_docking = false;
+			}
+		}
+
+		if( (MOOSStrCmp(m.GetKey(),"SHUTDOWN")) && (MOOSStrCmp(m.GetString(),"true")) )
+		{
+			// Disconnect comms:
+			MOOSTrace("Closing Module \n");
+			this->RequestQuit();
+		}
+
+	}
 
   UpdateMOOSVariables(NewMail);
   return true;
