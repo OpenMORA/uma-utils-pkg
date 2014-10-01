@@ -1152,7 +1152,7 @@ bool CDockingApp::OnNewMail(MOOSMSG_LIST &NewMail)
 				{
 					printf("[CAutoDocking_Laser] Requested Autodocking process, but ALREADY CHARGING! Disabling request.\n");
 					park = 0.0;
-					m_Comms.Notify("PARKING",0.0);
+					//m_Comms.Notify("PARKING",0.0);
 				}
 			}
 			else

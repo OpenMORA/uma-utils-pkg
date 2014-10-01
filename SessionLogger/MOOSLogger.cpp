@@ -76,9 +76,7 @@ using namespace std;
 //////////////////////////////////////////////////////////////////////
 
 CMOOSLogger::CMOOSLogger()
-{
-	
-	
+{	
     //be default we don't need to be too fast..
     SetAppFreq(5);
 
@@ -210,7 +208,25 @@ bool CMOOSLogger::OnNewMail(MOOSMSG_LIST &NewMail)
         {
             OnLoggerRestart();
         }
+		else if(MOOSStrCmp(q->GetKey(),"LOGGER_START"))
+        {
+			//Use the username as the StemfileName to separate log files
+			m_sStemFileName = q->GetAsString();
+			printf("[SessionLogger]: New session starts for user %s\n",q->GetAsString().c_str());
+            OnLoggerStart();
+        }
+		else if(MOOSStrCmp(q->GetKey(),"LOGGER_STOP"))
+        {
+			printf("[SessionLogger]: Session END.\n");
+            OnLoggerStop();
+        }
 
+		else if(MOOSStrCmp(q->GetKey(),"SHUTDOWN"))
+        {
+			printf("[SessionLogger]: Closing the module.\n");
+            OnLoggerStop();
+			this->RequestQuit();
+        }
     }
 
     return true;
@@ -323,8 +339,8 @@ bool CMOOSLogger::OnStartUp()
     //////////////////////////////
     //  now open the log files  //
     //////////////////////////////
-    if(!OnNewSession())
-        return false;
+    //if(!OnNewSession())
+    //    return false;
 
     return true;
 }
@@ -957,14 +973,43 @@ bool CMOOSLogger::IsSystemMessage(string &sKey)
 
 bool CMOOSLogger::DoLogBanner(ostream &os, string &sFileName)
 {
-    os<<"%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n";
+    os<<"%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n";
     os<<"%% LOG FILE:       "<<sFileName.c_str()<<endl;
     os<<"%% FILE OPENED ON  "<<MOOSGetDate().c_str();
     os<<"%% LOGSTART        "<<setw(20)<<setprecision(12)<<GetAppStartTime()<<endl;
     if(m_bMarkDataType)
     	os<<"%% DATATYPE MARKING ON\n";
-    os<<"%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n";
+    os<<"%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n";
 
+	//JGMonroy
+	// Save initial state variables: GRAPH, ROBOT_CONTROL_MODE, Is_Charging
+	os<<"%% INITIAL STATE:\n";
+	CMOOSVariable * pVar = GetMOOSVar("GRAPH");
+	if(pVar)
+	{
+		os<<"%% GRAPH		"<<pVar->GetStringVal().c_str()<<endl;
+	}
+	pVar = GetMOOSVar("ROBOT_CONTROL_MODE");
+	if(pVar)
+	{
+		os<<"%% ROBOT_CONTROL_MODE		"<<pVar->GetDoubleVal()<<endl;
+	}
+	pVar = GetMOOSVar("Is_Charging");
+	if(pVar)
+	{
+		os<<"%% Is_Charging		"<<pVar->GetDoubleVal()<<endl;
+	}
+	pVar = GetMOOSVar("RANDOM_NAVIGATOR");
+	if(pVar)
+	{
+		os<<"%% RANDOM_NAVIGATOR		"<<pVar->GetDoubleVal()<<endl;
+	}
+	pVar = GetMOOSVar("PARKING");
+	if(pVar)
+	{
+		os<<"%% PARKING		"<<pVar->GetDoubleVal()<<endl;
+	}
+	 os<<"%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n";
     return true;
 }
 
@@ -1202,6 +1247,31 @@ bool CMOOSLogger::OnLoggerRestart()
     return true;
 }
 
+
+bool CMOOSLogger::OnLoggerStart()
+{
+	//Close any existing session!
+	CloseFiles();
+
+    //start up fresh a new session
+    if(!OnNewSession())
+        return MOOSFail("[SessionLogger]: Failed to start a new logging session");
+
+    MOOSDebugWrite(MOOSFormat("Now Logging to : %s",GetDirectoryName(m_sLogDirectoryName).c_str()));
+
+    return true;
+}
+
+bool CMOOSLogger::OnLoggerStop()
+{
+	//Close current Session
+    string sTxt = MOOSFormat("Closing : %s",GetDirectoryName(m_sLogDirectoryName).c_str());
+    MOOSDebugWrite(sTxt);
+
+    CloseFiles();
+
+    return true;
+}
 
 CMOOSLogger::LogType CMOOSLogger::GetDestinationLog(const std::string & sMsg)
 {

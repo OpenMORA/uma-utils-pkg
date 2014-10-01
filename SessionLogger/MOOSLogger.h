@@ -91,6 +91,8 @@ protected:
     bool ConfigureLogging();
     bool DoAsyncLog(MOOSMSG_LIST & NewMail);
     bool OnLoggerRestart();
+	bool OnLoggerStart();
+	bool OnLoggerStop();
     bool AddSyncLineOfTimes(double dfTimeNow=-1);
     bool LabelSyncColumns();
     bool DoLogBanner(std::ostream & os,std::string & sFileName);
