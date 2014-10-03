@@ -181,6 +181,8 @@ bool CMOOSLogger::OnConnectToServer()
     //additional variables that are intersting to us..
     m_Comms.Register("LOGGER_RESTART",0.5);
 
+	//! @moos_subscribe	SHUTDOWN
+	AddMOOSVariable("SHUTDOWN","SHUTDOWN","SHUTDOWN",0);
     return true;
 }
 
