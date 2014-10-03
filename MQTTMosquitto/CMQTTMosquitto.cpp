@@ -360,6 +360,9 @@ bool CMQTTMosquitto::DoRegistrations()
 	//! @moos_subscribe COLLABORATIVE
 	AddMOOSVariable( "COLLABORATIVE", "COLLABORATIVE", "COLLABORATIVE", 0);
 
+	//! @moos_subscribe Is_Charging
+	AddMOOSVariable( "Is_Charging", "Is_Charging", "Is_Charging", 0);
+
 	//! @moos_subscribe SHUTDOWN
 	AddMOOSVariable( "SHUTDOWN", "SHUTDOWN", "SHUTDOWN", 0);
 
@@ -376,7 +379,7 @@ bool CMQTTMosquitto::OnNewMail(MOOSMSG_LIST &NewMail)
 	    const CMOOSMsg &m = *it;		
 
 		//Send Status to Client via MQTT topic
-		// LOCALIZATION + TOPOLOGICAL_PLACE + TOPOLOGICAL_DESTINY + CONTROL_MODE + RANDOM_NAVIGATOR + PARKING + COLLABORATIVE
+		// LOCALIZATION + TOPOLOGICAL_PLACE + TOPOLOGICAL_DESTINY + CONTROL_MODE + BATTERY_V_FLOAT + Is_Charging + RANDOM_NAVIGATOR + PARKING + COLLABORATIVE
 		if( it->GetName()=="LOCALIZATION")
 		{
 			if( mrpt::system::timeDifference(timeStamp_last_loc, mrpt::system::now()) > (1/localizationRate) )
@@ -420,6 +423,21 @@ bool CMQTTMosquitto::OnNewMail(MOOSMSG_LIST &NewMail)
 				{
 					float battery_v_f  = (float) pVarV->GetDoubleVal();
 					message += format("|%.2f",battery_v_f);
+				}
+				else
+					message += "|NULL";
+
+				//Charging Status
+				CMOOSVariable * pVarChar = GetMOOSVar("Is_Charging");
+				if(pVarChar)
+				{
+					double charging_status = pVarChar->GetDoubleVal();
+					if( charging_status == 0.0)
+						message += "|0";
+					else if(charging_status == 1.0)
+						message += "|1";
+					else
+						message += "|NULL";					
 				}
 				else
 					message += "|NULL";
@@ -865,6 +883,9 @@ void CMQTTMosquitto::on_message(const mosquitto_message *message)
 	{
 		//! @moos_publish PILOT_MQTT_ACK Flag to indicate that communication with client is alive.
 		m_Comms.Notify("PILOT_MQTT_ACK","1");
+
+		//Echo ACK to the user
+		on_publish(NULL, (broker_username + "/" + "RobotACK").c_str(),5,"alive");
 	}
 
 	// Debug //Debugf
