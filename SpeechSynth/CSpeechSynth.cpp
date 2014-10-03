@@ -81,6 +81,9 @@ bool CSpeechSynthApp::DoRegistrations()
 	//! @moos_subscribe	SAY
 	AddMOOSVariable("SAY","SAY","SAY",0);
 	
+	//! @moos_subscribe	SHUTDOWN
+	AddMOOSVariable("SHUTDOWN","SHUTDOWN","SHUTDOWN",0);
+
 	RegisterMOOSVariables();
 	return true;
 }
@@ -105,9 +108,7 @@ bool CSpeechSynthApp::OnNewMail(MOOSMSG_LIST &NewMail)
 			CloseClipboard();
 			
 			// Is it necessary to free the memory allocated????
-			// GlobalFree(hMem); 
-					
-
+			// GlobalFree(hMem);
 		}
 		
 		if( (i->GetName()=="SHUTDOWN") && (MOOSStrCmp(i->GetString(),"true")) )
