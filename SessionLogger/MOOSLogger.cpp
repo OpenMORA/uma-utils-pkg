@@ -212,8 +212,15 @@ bool CMOOSLogger::OnNewMail(MOOSMSG_LIST &NewMail)
         }
 		else if(MOOSStrCmp(q->GetKey(),"LOGGER_START"))
         {
-			//Use the username as the StemfileName to separate log files
+			//Use the username as the StemfileName to differenciate log files
 			m_sStemFileName = q->GetAsString();
+			//Use also the Robot_ID
+			CMOOSVariable * pVar = GetMOOSVar("ROBOT_ID");
+			if(pVar)
+				m_sStemFileName += "#" + pVar->GetStringVal();
+			else
+				m_sStemFileName += "#NO_ROBOT_ID";
+
 			printf("[SessionLogger]: New session starts for user %s\n",q->GetAsString().c_str());
             OnLoggerStart();
         }
@@ -222,8 +229,8 @@ bool CMOOSLogger::OnNewMail(MOOSMSG_LIST &NewMail)
 			printf("[SessionLogger]: Session END.\n");
             OnLoggerStop();
         }
-
-		else if(MOOSStrCmp(q->GetKey(),"SHUTDOWN"))
+		
+		else if( MOOSStrCmp(q->GetKey(),"SHUTDOWN") && MOOSStrCmp(q->GetString(),"true") )
         {
 			printf("[SessionLogger]: Closing the module.\n");
             OnLoggerStop();
@@ -241,7 +248,7 @@ bool CMOOSLogger::OnStartUp()
     //they make up the sync log
     AddMOOSVariable("MOOS_DEBUG","MOOS_DEBUG","",0);
     AddMOOSVariable("MOOS_SYSTEM","MOOS_SYSTEM","",0);
-
+	
 	m_bSynchronousLog = false;
     //are we required to perform synchronous logs?
     string sTmp;
@@ -701,11 +708,11 @@ std::string CMOOSLogger::MakeLogName(string sStem)
     {
         // Print local time as a string
 
-        sTmp = MOOSFormat( "%s_%d_%d_%d_____%.2d_%.2d_%.2d",
+		sTmp = MOOSFormat( "%s#%d_%d_%d_____%.2d_%.2d_%.2d",
             sStem.c_str(),
-            Now->tm_mday,
-            Now->tm_mon+1,
             Now->tm_year+1900,
+            Now->tm_mon+1,
+            Now->tm_mday,
             Now->tm_hour,
             Now->tm_min,
             Now->tm_sec);
@@ -996,11 +1003,17 @@ bool CMOOSLogger::DoLogBanner(ostream &os, string &sFileName)
 	{
 		os<<"%% ROBOT_CONTROL_MODE		"<<pVar->GetDoubleVal()<<endl;
 	}
-	pVar = GetMOOSVar("Is_Charging");
+	double charging = 0.0;
+	pVar = GetMOOSVar("BATTERY_IS_CHARGING");
 	if(pVar)
-	{
-		os<<"%% Is_Charging		"<<pVar->GetDoubleVal()<<endl;
-	}
+		charging += pVar->GetDoubleVal();
+	pVar = GetMOOSVar("BATTERY_MANAGER_IS_CHARGING");
+	if(pVar)
+		charging += pVar->GetDoubleVal();
+	if( charging>1 )
+		charging = 1;
+	os<<"%% Is_Charging		"<<charging<<endl;	
+
 	pVar = GetMOOSVar("RANDOM_NAVIGATOR");
 	if(pVar)
 	{
@@ -1163,12 +1176,13 @@ bool CMOOSLogger::OnNewSession()
     m_Comms.Notify("LOGGER_DIRECTORY",m_sLogDirectoryName.c_str());
     
     //and write this to file
-    ofstream LF(m_sSummaryFile.c_str());
+    /* JGMonroy
+	ofstream LF(m_sSummaryFile.c_str());
     if(LF.is_open())
     {
-        LF<<"LastOpenedLoggingDirectory="<<m_sLogDirectoryName<<std::endl;
-        
+        LF<<"LastOpenedLoggingDirectory="<<m_sLogDirectoryName<<std::endl;        
     }
+	*/
     
 
     m_sAsyncFileName = m_sLogDirectoryName+"/"+m_sLogRootName+".alog";
