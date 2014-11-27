@@ -485,8 +485,8 @@ bool CAutoDockingCamera::DoRegistrations()
 	//! @moos_subscribe TILT_CURRENT_ANGLE_FROM_HOME
 	AddMOOSVariable( "TILT_CURRENT_ANGLE_FROM_HOME", "TILT_CURRENT_ANGLE_FROM_HOME", "TILT_CURRENT_ANGLE_FROM_HOME", 0);
 	
-	//! @moos_subscribe Is_Charging
-	AddMOOSVariable( "Is_Charging", "Is_Charging", "Is_Charging", 0);
+	//! @moos_subscribe BATTERY_IS_CHARGING
+	AddMOOSVariable( "BATTERY_IS_CHARGING", "BATTERY_IS_CHARGING", "BATTERY_IS_CHARGING", 0);
 
 	//! @moos_subscribe ODOMETRY_OBS
 	AddMOOSVariable( "ODOMETRY_OBS", "ODOMETRY_OBS", "ODOMETRY_OBS", 0);
@@ -2061,7 +2061,7 @@ bool CAutoDockingCamera::checkGoalAchieved()
 			m_timeLog.enter("Check goal achieved");
 
 		//Check if Is_Charging
-		CMOOSVariable * pVar = GetMOOSVar("Is_Charging");
+		CMOOSVariable * pVar = GetMOOSVar("BATTERY_IS_CHARGING");
 		if( pVar )
 		{
 			double is_charging = pVar->GetDoubleVal();
