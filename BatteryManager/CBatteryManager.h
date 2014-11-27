@@ -71,6 +71,7 @@ protected:
 	float						Level_8; //Voltage Level 8, 80% Charged 	(Units = Volts)
 	float						Level_9; //Voltage Level 9, 90% Charged 	(Units = Volts)
 	float						Level_10; //Voltage Level 10, 100% Charged 	(Units = Volts) Full Charged
+	float						Offset_Battery_V; //An offset to apply to the readed voltage
 	float						Conv_Battery_V; //Battery Voltage Conversion Factor 
 	float						Conv_Battery_I;	//Battery Intensity Conversion Factor 
 	float						Conv_Charger_I; //Charger Intensity Conversion Factor 
