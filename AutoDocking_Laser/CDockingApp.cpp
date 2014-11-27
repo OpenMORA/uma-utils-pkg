@@ -1074,10 +1074,13 @@ bool CDockingApp::DoRegistrations()
   //! @moos_var MOTION_CMD_W The current robot angular velocity  
   AddMOOSVariable( "MOTION_CMD_W", "MOTION_CMD_W", "MOTION_CMD_W", 0 );
   
-  //! @moos_subscribe Is_charging
-  //! @moos_var Is_charging Variable that indicates when the robot is charging its battery
-  AddMOOSVariable( "Is_Charging", "Is_Charging", "Is_Charging", 0 );
+  //! @moos_subscribe BATTERY_IS_CHARGING
+  //! @moos_var BATTERY_IS_CHARGING Variable that indicates when the robot is charging its battery
+  AddMOOSVariable( "BATTERY_IS_CHARGING", "BATTERY_IS_CHARGING", "BATTERY_IS_CHARGING", 0 );
   
+  //! @moos_subscribe BATTERY_MANAGER_IS_CHARGING
+  AddMOOSVariable( "BATTERY_MANAGER_IS_CHARGING", "BATTERY_MANAGER_IS_CHARGING", "BATTERY_MANAGER_IS_CHARGING", 0);
+
   //! @moos_subscribe PARKING
   //! @moos_var PARKING Variable that indicates when the robot should start the Docking process.
   AddMOOSVariable( "PARKING", "PARKING", "PARKING", 0 );
@@ -1102,7 +1105,7 @@ bool CDockingApp::OnNewMail(MOOSMSG_LIST &NewMail)
 	{
 		const CMOOSMsg &m = *it;
 
-		if( MOOSStrCmp(m.GetKey(),"Is_Charging") )
+		if( MOOSStrCmp(m.GetKey(),"BATTERY_IS_CHARGING") || MOOSStrCmp(m.GetKey(),"BATTERY_MANAGER_IS_CHARGING") )
 		{
 			//Update charging status
 			charge = m.GetDouble();
