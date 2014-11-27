@@ -59,6 +59,7 @@
 			  -RandomNavigator 0/1					--> RANDOM_NAVIGATOR
 			  -GoToRecharge							--> GO_TO_RECHARGE
 			  -Collaborative mod ang				--> NAVIGATE_TARGET or MOTION CMD_W
+			  -Tilt angle/+ angle/- angle (deg)		--> SET_TILT_FROM_HOME
 
   Robot_Name/MapBuildingCommand
 			 -Rawlog Start/Stop						-->	SAVE_RAWLOG
@@ -129,13 +130,19 @@ bool CMQTTMosquitto::OnStartUp()
 	cout << "READ: laserScanRate = " << laserScanRate << endl;
 	cout << "READ: laserScanResolution = " << laserScanResolution << endl << endl;
 
-
-	cout << "Setting Username and Password..." << endl;	
 	// Read Connection Params
-	//-------------------------	
-	//! @moos_param user The username to connect to the MQTT broker (new sesion). It is the asigned name to the Robot, e.g: Robot_ES4
-	broker_username = m_ini.read_string("","user","NO_USER_SET",true);	
-	cout << "READ: user= " << broker_username << endl;
+	//-------------------------
+	m_ini.enableSectionNames(true);
+	//! @moos_param robotID The unique identifier of the robot (common parameter).
+	broker_username = m_ini.read_string("CommonParams","robotID","noID",false);
+	if( broker_username == "noID" )
+	{	//Try reading user param from MQTT module
+		//! @moos_param user The username to connect to the MQTT broker (new sesion). It is the asigned name to the Robot, e.g: Robot_ES4
+		broker_username = m_ini.read_string("","user","NO_USER_SET",true);
+	}
+
+	//! @moos_publish ROBOT_ID The unique identifier of the robot.
+	m_Comms.Notify("ROBOT_ID",broker_username.c_str());
 
 	//! @moos_param password The password to connect to the MQTT broker
 	broker_password = m_ini.read_string("","password","NO_PASSWORD_SET",false);
@@ -245,6 +252,8 @@ bool CMQTTMosquitto::Iterate()
 {
 	try
 	{
+		// Check connection with Broker
+		//------------------------------
 		int rc = loop(-1);
 		if(rc!=MOSQ_ERR_SUCCESS)
 		{
@@ -288,7 +297,9 @@ bool CMQTTMosquitto::Iterate()
 
 		}
 
+
 		//If a motion command (V,W) is active, check timeout
+		//--------------------------------------------------
 		if (is_motion_command_set)
 		{
 			//compute time difference from last motion command
@@ -298,17 +309,142 @@ bool CMQTTMosquitto::Iterate()
 				//Cancel motion
 				is_motion_command_set = false;
 				//! @moos_publish CANCEL_NAVIGATION Cancel the current navigation and return control to client (Pilot)				
-				m_Comms.Notify("CANCEL_NAVIGATION", '1');
+				m_Comms.Notify("CANCEL_NAVIGATION", 1.0);
 			}
 		}
 
+
+		// Send robot STATUS
+		//-------------------		
+		// LOCALIZATION + TOPOLOGICAL_PLACE + TOPOLOGICAL_DESTINY + CONTROL_MODE + BATTERY_V_FLOAT + Is_Charging + RANDOM_NAVIGATOR + PARKING + COLLABORATIVE		
+		if( mrpt::system::timeDifference(timeStamp_last_loc, mrpt::system::now()) > (1/localizationRate) )
+		{
+			std::string message = "";
+
+			//1. localization (x y phi)
+			CMOOSVariable * pVarLoc = GetMOOSVar("LOCALIZATION");
+			if(pVarLoc)
+				message = pVarLoc->GetStringVal();
+			else
+				message = "NULL";
+			
+			//2. topological localization (node_name)
+			CMOOSVariable * pVar = GetMOOSVar("ROBOT_TOPOLOGICAL_PLACE");
+			if(pVar)
+				message += "|" + pVar->GetStringVal();
+			else
+				message += "|NULL";
+
+			//3. topological destiny (node_name)
+			CMOOSVariable * pVar2 = GetMOOSVar("TOPOLOGICAL_DESTINY");
+			if(pVar2)
+				message += "|" + pVar2->GetStringVal();
+			else
+				message += "|NULL";
+
+			//4. Control Mode (ROBOT_CONTROL_MODE: 0=Manual, 2=Autonomous=OpenMORA)
+			CMOOSVariable * pVar3 = GetMOOSVar("ROBOT_CONTROL_MODE");
+			if(pVar3)
+			{
+				double current_mode = pVar3->GetDoubleVal();
+				if( current_mode == 0.0)
+					message += "|Manual";
+				else if(current_mode == 2.0)
+					message += "|Autonomous";
+				else
+					message += "|Undefined";
+			}
+			else
+				message += "|NULL";
+
+
+			//5. Battery votlage
+			CMOOSVariable * pVarV = GetMOOSVar("BATTERY_V_FLOAT");
+			if(pVarV)
+			{
+				float battery_v_f  = (float) pVarV->GetDoubleVal();
+				message += format("|%.2f",battery_v_f);
+			}
+			else
+				message += "|NULL";
+
+			//Charging Status
+			double charging_status = 0.0;
+			CMOOSVariable * pVarChar = GetMOOSVar("BATTERY_IS_CHARGING");			
+			if(pVarChar)
+				charging_status += pVarChar->GetDoubleVal();
+
+			CMOOSVariable * pVarChar2 = GetMOOSVar("BATTERY_MANAGER_IS_CHARGING");
+			if(pVarChar2)
+				charging_status += pVarChar2->GetDoubleVal();
+
+			if( charging_status == 0.0)
+				message += "|0";
+			else if(charging_status >= 1.0)
+				message += "|1";
+			else
+				message += "|NULL";
+			
+
+			//6. Flag Random_Navigator
+			CMOOSVariable * pVar4 = GetMOOSVar("RANDOM_NAVIGATOR");
+			if(pVar4)
+			{
+				double random_navigator_active = pVar4->GetDoubleVal();
+				if( random_navigator_active == 0.0)
+					message += "|0";
+				else if(random_navigator_active == 1.0)
+					message += "|1";
+				else if(random_navigator_active == 2.0)
+					message += "|2";
+				else
+					message += "|NULL";
+			}
+			else
+				message += "|NULL";
+
+			//7. Flag Autodocking assistant
+			CMOOSVariable * pVar5 = GetMOOSVar("PARKING");
+			if(pVar5)
+			{
+				double parking_active = pVar5->GetDoubleVal();
+				if( parking_active == 0.0)
+					message += "|0";
+				else if(parking_active == 1.0)
+					message += "|1";
+				else
+					message += "|NULL";
+			}
+			else
+				message += "|NULL";
+
+			//8. Flag Collaborative assistant
+			CMOOSVariable * pVarCol = GetMOOSVar("COLLABORATIVE");
+			if(pVarCol)
+			{
+				double collaborative_active = pVarCol->GetDoubleVal();
+				if( collaborative_active == 0.0)
+					message += "|0";
+				else if(collaborative_active == 1.0)
+					message += "|1";
+				else
+					message += "|NULL";
+			}
+			else
+				message += "|NULL";
+
+
+			// Publish STATUS to MQTT client
+			on_publish(NULL, (broker_username + "/" + "Status").c_str(), strlen(message.c_str()), message.c_str());
+			timeStamp_last_loc = mrpt::system::now();
+		}
+		
 		return true;
     }
 	catch (std::exception &e)
 	{
 		return MOOSFail( (string("**ERROR**") + string(e.what())).c_str() );
-	}
-
+	}	
 }
 
 
@@ -360,8 +496,14 @@ bool CMQTTMosquitto::DoRegistrations()
 	//! @moos_subscribe COLLABORATIVE
 	AddMOOSVariable( "COLLABORATIVE", "COLLABORATIVE", "COLLABORATIVE", 0);
 
-	//! @moos_subscribe Is_Charging
-	AddMOOSVariable( "Is_Charging", "Is_Charging", "Is_Charging", 0);
+	//! @moos_subscribe BATTERY_IS_CHARGING
+	AddMOOSVariable( "BATTERY_IS_CHARGING", "BATTERY_IS_CHARGING", "BATTERY_IS_CHARGING", 0);
+
+	//! @moos_subscribe BATTERY_MANAGER_IS_CHARGING
+	AddMOOSVariable( "BATTERY_MANAGER_IS_CHARGING", "BATTERY_MANAGER_IS_CHARGING", "BATTERY_MANAGER_IS_CHARGING", 0);	
+
+	//! @moos_subscribe TILT_CURRENT_ANGLE_FROM_HOME
+	AddMOOSVariable( "TILT_CURRENT_ANGLE_FROM_HOME", "TILT_CURRENT_ANGLE_FROM_HOME", "TILT_CURRENT_ANGLE_FROM_HOME", 0);	
 
 	//! @moos_subscribe SHUTDOWN
 	AddMOOSVariable( "SHUTDOWN", "SHUTDOWN", "SHUTDOWN", 0);
@@ -378,128 +520,10 @@ bool CMQTTMosquitto::OnNewMail(MOOSMSG_LIST &NewMail)
 	{
 	    const CMOOSMsg &m = *it;		
 
-		//Send Status to Client via MQTT topic
-		// LOCALIZATION + TOPOLOGICAL_PLACE + TOPOLOGICAL_DESTINY + CONTROL_MODE + BATTERY_V_FLOAT + Is_Charging + RANDOM_NAVIGATOR + PARKING + COLLABORATIVE
-		if( it->GetName()=="LOCALIZATION")
-		{
-			if( mrpt::system::timeDifference(timeStamp_last_loc, mrpt::system::now()) > (1/localizationRate) )
-			{
-				//1. localization (x y phi)
-				message = m.GetString();
-
-				//2. topological localization (node_name)
-				CMOOSVariable * pVar = GetMOOSVar("ROBOT_TOPOLOGICAL_PLACE");
-				if(pVar)
-					message += "|" + pVar->GetStringVal();
-				else
-					message += "|NULL";
-
-				//3. topological destiny (node_name)
-				CMOOSVariable * pVar2 = GetMOOSVar("TOPOLOGICAL_DESTINY");
-				if(pVar2)
-					message += "|" + pVar2->GetStringVal();
-				else
-					message += "|NULL";
-
-				//4. Control Mode (ROBOT_CONTROL_MODE: 0=Manual, 2=Autonomous=OpenMORA)
-				CMOOSVariable * pVar3 = GetMOOSVar("ROBOT_CONTROL_MODE");
-				if(pVar3)
-				{
-					double current_mode = pVar3->GetDoubleVal();
-					if( current_mode == 0.0)
-						message += "|Manual";
-					else if(current_mode == 2.0)
-						message += "|Autonomous";
-					else
-						message += "|Undefined";
-				}
-				else
-					message += "|NULL";
-
-
-				//5. Battery votlage
-				CMOOSVariable * pVarV = GetMOOSVar("BATTERY_V_FLOAT");
-				if(pVarV)
-				{
-					float battery_v_f  = (float) pVarV->GetDoubleVal();
-					message += format("|%.2f",battery_v_f);
-				}
-				else
-					message += "|NULL";
-
-				//Charging Status
-				CMOOSVariable * pVarChar = GetMOOSVar("Is_Charging");
-				if(pVarChar)
-				{
-					double charging_status = pVarChar->GetDoubleVal();
-					if( charging_status == 0.0)
-						message += "|0";
-					else if(charging_status == 1.0)
-						message += "|1";
-					else
-						message += "|NULL";					
-				}
-				else
-					message += "|NULL";
-
-				//6. Flag Random_Navigator
-				CMOOSVariable * pVar4 = GetMOOSVar("RANDOM_NAVIGATOR");
-				if(pVar4)
-				{
-					double random_navigator_active = pVar4->GetDoubleVal();
-					if( random_navigator_active == 0.0)
-						message += "|0";
-					else if(random_navigator_active == 1.0)
-						message += "|1";
-					else if(random_navigator_active == 2.0)
-						message += "|2";
-					else
-						message += "|NULL";
-				}
-				else
-					message += "|NULL";
-
-				//7. Flag Autodocking assistant
-				CMOOSVariable * pVar5 = GetMOOSVar("PARKING");
-				if(pVar5)
-				{
-					double parking_active = pVar5->GetDoubleVal();
-					if( parking_active == 0.0)
-						message += "|0";
-					else if(parking_active == 1.0)
-						message += "|1";
-					else
-						message += "|NULL";
-				}
-				else
-					message += "|NULL";
-
-				//8. Flag Collaborative assistant
-				CMOOSVariable * pVarCol = GetMOOSVar("COLLABORATIVE");
-				if(pVarCol)
-				{
-					double collaborative_active = pVarCol->GetDoubleVal();
-					if( collaborative_active == 0.0)
-						message += "|0";
-					else if(collaborative_active == 1.0)
-						message += "|1";
-					else
-						message += "|NULL";
-				}
-				else
-					message += "|NULL";
-
-
-				// Publish STATUS to MQTT client
-				on_publish(NULL, (broker_username + "/" + "Status").c_str(), strlen(message.c_str()), message.c_str());
-				timeStamp_last_loc = mrpt::system::now();
-			}
-		}
-
 		//Inform the Client that the GRAPH has been updated
 		if( it->GetName()=="GRAPH")
 		{			
-			cout << "Sending New GRAPH to Client" << endl;			
+			//cout << "[MQTTMosquitto]: Sending New GRAPH to Client" << endl;			
 			std::string graph = "Graph";
 			graph.append(it->GetString().c_str());
 			on_publish(NULL,(broker_username + "/" + "Topology").c_str(),strlen(graph.c_str()),graph.c_str());					
@@ -512,36 +536,7 @@ bool CMQTTMosquitto::OnNewMail(MOOSMSG_LIST &NewMail)
 			on_publish(NULL,(broker_username + "/" + "ErrorMsg").c_str(),strlen(msg.c_str()),msg.c_str());
 		}
 
-		//Inform Client about the current Navigation MODE		
-		if( it->GetName()=="ROBOT_CONTROL_MODE")
-		{			
-			cout << "Sending Current Navigation Mode to Client: " << it->GetString() << endl;
-			size_t mode = (size_t)(it->GetDouble());
-			
-			switch(mode)
-			{
-				case 0:	//Manual mode
-					{
-					message = "manual|noDestiny";
-					break;
-					}
-				case 2:	//Autonomous mode
-					{
-					CMOOSVariable * pVar = GetMOOSVar("GET_PATH");
-					std::string destiny = "NULL";
-					if(pVar)
-						destiny = pVar->GetStringVal();
-					message = "auto|" + destiny;
-					break;
-					}
-				default:
-					cout << "ERROR: Incorrect NavigationMode!!!!" << endl;
-			}
-			
-			on_publish(NULL, (broker_username + "/" + "NavigationMode").c_str(), strlen(message.c_str()), message.c_str());
-			cout << endl << "NavigationMode is " << message.c_str() << endl;
-		}
-
+		
 		//Send Laser scans to client - 4Hz
 		if( it->GetName()=="LASER1")
 		{
@@ -641,24 +636,29 @@ void CMQTTMosquitto::on_connect (int rc)
 	}
 }
 
+
+
 void CMQTTMosquitto::on_message(const mosquitto_message *message)
 {
-	std::cout << "Got message to topic " << message->topic;
-    if (message->payloadlen)
-        std::cout << ", payload text is " << message->payload << "\n";
-    else
-        std::cout << ", payload is (null)\n";
-
-	
-    char buf[51];	
+	char buf[51];
 	memset(buf, 0, 51*sizeof(char));
     /* Copy N-1 bytes to ensure always 0 terminated. */
     memcpy(buf, message->payload, 50*sizeof(char));
-    printf(buf, 50);
-	printf("\n");
 	const char *aux;
 	aux=buf;
-    
+
+	// Display incomming msg (except ClientACK)
+	//-----------------------	
+	if( strcmp(message->topic, (broker_username + "/" +"ClientACK").c_str()) )
+	{
+		std::cout << "[MQTTMosquitto]: " << message->topic << " : ";		
+		printf(buf, 50);
+		printf("\n\n");
+		//if (message->payloadlen)
+	    //    std::cout << ", payload text is " << message->payload << "\n";
+	    //else
+		//	std::cout << ", payload is (null)\n";
+	}	
 		
 	// TOPOLOGY-COMMANDS
 	if(!strcmp(message->topic, (broker_username + "/" +"TopologyCommand").c_str() ))
@@ -747,9 +747,9 @@ void CMQTTMosquitto::on_message(const mosquitto_message *message)
 		//StopGiraff
 		if(action == "StopGiraff")
 		{
-			//! @moos_publish CANCEL_NAVIGATION Cancel the current navigation and return control to client (Manual Mode)
-			cout << "Request received to cancel navigation" << endl;
-			m_Comms.Notify("CANCEL_NAVIGATION", '1');
+			cout << "[MQTTMosquitto]: STOP ALL!!" << endl;
+			//! @moos_publish CANCEL_NAVIGATION Cancel the current navigation and return control to client (Manual Mode)			
+			m_Comms.Notify("CANCEL_NAVIGATION", 1.0);
 		}
 
 		// GoToPoint x y
@@ -767,7 +767,7 @@ void CMQTTMosquitto::on_message(const mosquitto_message *message)
 				const string target = format("[%.03f %.03f]", atof(gotox.c_str()),atof(gotoy.c_str()));
 				//! @moos_publish NAVIGATE_TARGET Set destination ([x y]) for robot to go autonomously
 				m_Comms.Notify("NAVIGATE_TARGET",target);
-				printf("%s\n",target.c_str());
+				//printf("%s\n",target.c_str());
 			}
 			else
 				cout << "[MQTT Error]: GotoPoint command incorrect" << endl;
@@ -776,7 +776,7 @@ void CMQTTMosquitto::on_message(const mosquitto_message *message)
 		// GoToNode label
 		else if(action == "GoToNode")
 		{
-			printf("Navegación solicitada a Nodo: %s\n",pluginCommand.c_str());
+			//printf("Navegación solicitada a Nodo: %s\n",pluginCommand.c_str());
 			
 			//! @moos_publish GO_TO_NODE Request the RobotController to start a reactive navigation to selected node.
 			m_Comms.Notify("GO_TO_NODE", pluginCommand );
@@ -821,6 +821,46 @@ void CMQTTMosquitto::on_message(const mosquitto_message *message)
 		{
 			//! @moos_publish COLLABORATIVE_REQUEST A request related to collaborative control of the robot
 			m_Comms.Notify("COLLABORATIVE_REQUEST", pluginCommand);			
+		}
+
+		//Tilt angle (fixed angle or  + x or - x)
+		else if(action == "Tilt")
+		{
+			std::deque<std::string> list;
+			mrpt::system::tokenize(pluginCommand," ",list);
+			double angle;
+
+			// Set fixed angle
+			if( list.size() == 1 )
+				angle = atof(pluginCommand.c_str());
+			else if( list.size() == 2 )
+			{
+				float angle_inc = atof(list.at(1).c_str());
+				//Get current tilt angle
+				CMOOSVariable *pVar = GetMOOSVar("TILT_CURRENT_ANGLE_FROM_HOME");
+				if( pVar )
+				{
+					double angle_current =  pVar->GetDoubleVal();
+					if( list.at(0) == "+")
+						angle = angle_current + angle_inc;
+					else
+						angle = angle_current - angle_inc;
+				}
+				else
+				{
+					cout << "[MQTT Error]: Tilt - CANNOT REECOVER CURRENT TILT" << endl;
+					angle = 0.0;
+				}
+			}
+			else
+			{
+				cout << "[MQTT Error]: Tilt - To many arguments" << endl;
+				angle = 0.0;
+			}
+
+			//! @moos_publish TILT_SET_ANGLE_FROM_HOME: The new tilt angle (degress) to set the robot's screen
+			cout <<  "[MQTT Tilt]: Requested angle=" << angle << "deg" << endl;
+			m_Comms.Notify("TILT_SET_ANGLE_FROM_HOME", angle);
 		}
 	}
 	
