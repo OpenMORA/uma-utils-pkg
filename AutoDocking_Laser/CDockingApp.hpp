@@ -29,13 +29,14 @@
 #ifndef CDockingApp_H
 #define CDockingApp_H
 
-#include <MOOS/libMOOS/App/MOOSApp.h>
+//#include <MOOS/libMOOS/App/MOOSApp.h>
+#include <COpenMORAMOOSApp.h>
 #include <mrpt/gui/CDisplayWindowPlots.h>
 #include <mrpt/slam/CObservation2DRangeScan.h>
 #include <math.h>
 // Any other includes..
 
-class CDockingApp : public CMOOSApp
+class CDockingApp : public COpenMORAApp
 {
 public:
     CDockingApp();
@@ -80,24 +81,24 @@ protected:
 	
 	mrpt::slam::CObservation2DRangeScanPtr obs;			//The laser scans
 	const static unsigned int TAMMAXIMO=1300;
-    float posX[TAMMAXIMO];
-    float posY[TAMMAXIMO];
-	unsigned int TAM;									//Size of laser scans
-	bool ok;											//whether the pattern is found or not
+    float posX[TAMMAXIMO];								//X coordinates of the obstacles in the scan (cm)
+    float posY[TAMMAXIMO];								//Y coordinates of the obstacles in the scan (cm)
+	unsigned int TAM;									//Size of laser scans (points)
+	bool pattern_found;									//whether the pattern is found or not
 	int p1ini,p1fin,p2ini,p2fin,p3ini,p3fin;
 	float valorafinal,valorbfinal;
+	std::string laserVar;								//The name of the laser variable from which get the scans.
     
-	float distancia_corte;
+	float distancia_corte;								//max distance in cm to consider a point as part of the same subpattern (planar continuous surface)
 	float distancia_comprobacion;
-	float longitud_total_patron;
-	float error_pendiente;
+	float longitud_total_patron;	
 	float angulo_central;
 	float distancia_parada;
 	float v_lineal_f2_rap;
 	float v_lineal_f2_len;
 	float agiro_f2_rap;
 	float agiro_f2_len;
-	float angulo_giro_hok;
+	float angulo_giro_hok;								//angular resolution = deg/point
 	float v_lineal_mover;
 	float agiro_mover;
 	float demasiado_cerca;
@@ -116,10 +117,9 @@ protected:
 	float angulovi;
 	float angulovf;
 	float disv;
-	bool ok_anterior;
+	bool found_in_previous_iteration;
 	float punto_inicio;
-	float punto_fin;
-	double park;
+	float punto_fin;	
     //bool miparking;
 	float charge;
 
@@ -130,7 +130,7 @@ protected:
 	float contfases2;
 
 	bool debug;		////cga:if true, visual information is shown.
-	bool go_docking;
+	bool go_docking;		// Indicates if the module is active or waiting
 
 	//cga:declaration of win as a pointer 
 	mrpt::gui::CDisplayWindowPlots *win;

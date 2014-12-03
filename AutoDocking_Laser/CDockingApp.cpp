@@ -29,11 +29,7 @@
 /**  @moos_module Module to automaticly dock the robot in the charging station using scan lasers and a predefined pattern over the charging station.
   *  This module implements the functionality of detecting a pattern based on three sticks of different width, and move towards it until
   *  the robot detects that its charging.
-  */
-
-
-/**  @moos_ToDo
-  *  Complete description of parameteres and published variables.
+  *  The dimensions of the pattern can be set via configuration params, as well as the movement speeds.
   */
 
 #include "CDockingApp.hpp"
@@ -64,56 +60,69 @@ CDockingApp::~CDockingApp()
 
 bool CDockingApp::OnStartUp()
 {
-  // Read parameters (if any) from the mission configuration file.
+	// PATTERN DIMENSIONS
+	//--------------------
+	// it is composed of three sticks of known dimensions and separation
+	//  PATTERN (front view) = __|__||__|||___
+	//  Sticks                   3   2   1 
+	//--------------------------------------------------------------------
+	//! @moos_param  longitud_total_patron The total length of the pattern (cm), from first to third stick
+	m_MissionReader.GetConfigurationParam("longitud_total_patron",longitud_total_patron);
+
+	//! @moos_param  laserVar The name of the OpenMora variable from which to get the scans.
+	laserVar = m_ini.read_string("","laserVar","LASER1",false);
+
+	//! @moos_param   distancia_corte  Max depth difference (cm) between points to consider them as part of the same line (subpattern)
+	m_MissionReader.GetConfigurationParam("distancia_corte",distancia_corte);
   
-  //! @moos_param   distancia_corte
-  m_MissionReader.GetConfigurationParam("distancia_corte",distancia_corte);
-  //! @moos_param  longitud_total_patron
-  m_MissionReader.GetConfigurationParam("longitud_total_patron",longitud_total_patron);
-  //! @moos_param  distancia_comprobacion
-  m_MissionReader.GetConfigurationParam("distancia_comprobacion",distancia_comprobacion);
-  //! @moos_param  error_pendiente
-  m_MissionReader.GetConfigurationParam("error_pendiente",error_pendiente);
-  //! @moos_param  distancia_parada
-  m_MissionReader.GetConfigurationParam("distancia_parada",distancia_parada);
-  //! @moos_param  v_lineal_f2_rap
-  m_MissionReader.GetConfigurationParam("v_lineal_f2_rap",v_lineal_f2_rap);
-  //! @moos_param  v_lineal_f2_len
-  m_MissionReader.GetConfigurationParam("v_lineal_f2_len",v_lineal_f2_len);
-  //! @moos_param  agiro_f2_rap
-  m_MissionReader.GetConfigurationParam("agiro_f2_rap",agiro_f2_rap);
-  //! @moos_param  agiro_f2_len
-  m_MissionReader.GetConfigurationParam("agiro_f2_len",agiro_f2_len);
-  //! @moos_param  v_lineal_mover
-  m_MissionReader.GetConfigurationParam("v_lineal_mover",v_lineal_mover);
-  //! @moos_param  agiro_mover
-  m_MissionReader.GetConfigurationParam("agiro_mover",agiro_mover);
-  //! @moos_param  demasiado_cerca
-  m_MissionReader.GetConfigurationParam("demasiado_cerca",demasiado_cerca);
-  //! @moos_param  lon_sp1i
-  m_MissionReader.GetConfigurationParam("lon_sp1i",lon_sp1i);
-  //! @moos_param  lon_sp1s
-  m_MissionReader.GetConfigurationParam("lon_sp1s",lon_sp1s);
-  //! @moos_param  lon_sp2i
-  m_MissionReader.GetConfigurationParam("lon_sp2i",lon_sp2i);
-  //! @moos_param  lon_sp2s
-  m_MissionReader.GetConfigurationParam("lon_sp2s",lon_sp2s);
-  //! @moos_param  lon_sp3i
-  m_MissionReader.GetConfigurationParam("lon_sp3i",lon_sp3i);
-  //! @moos_param  lon_sp3s
-  m_MissionReader.GetConfigurationParam("lon_sp3s",lon_sp3s);
-  //! @moos_param  lon_aux1i
-  m_MissionReader.GetConfigurationParam("lon_aux1i",lon_aux1i);
-  //! @moos_param  lon_aux1s
-  m_MissionReader.GetConfigurationParam("lon_aux1s",lon_aux1s);
-  //! @moos_param  lon_aux2i
-  m_MissionReader.GetConfigurationParam("lon_aux2i",lon_aux2i);
-  //! @moos_param  lon_aux2s
-  m_MissionReader.GetConfigurationParam("lon_aux2s",lon_aux2s);
+	//! @moos_param  distancia_comprobacion  //max error (cm) to consider a point as part of the line containing the three sub-patterns
+	m_MissionReader.GetConfigurationParam("distancia_comprobacion",distancia_comprobacion);
 
+	//! @moos_param  distancia_parada  Distance to the pattern (cm) to slow down the robot movement
+	m_MissionReader.GetConfigurationParam("distancia_parada",distancia_parada);
 
+	// Sticks
+		//! @moos_param  lon_sp1i  Min width of the first stick
+		m_MissionReader.GetConfigurationParam("lon_sp1i",lon_sp1i);
+		//! @moos_param  lon_sp1s  Max width of the first stick
+		m_MissionReader.GetConfigurationParam("lon_sp1s",lon_sp1s);
+		//! @moos_param  lon_sp2i  Min width of the second stick
+		m_MissionReader.GetConfigurationParam("lon_sp2i",lon_sp2i);
+		//! @moos_param  lon_sp2s  Max width of the second stick
+		m_MissionReader.GetConfigurationParam("lon_sp2s",lon_sp2s);
+		//! @moos_param  lon_sp3i  Min width of the thrid stick
+		m_MissionReader.GetConfigurationParam("lon_sp3i",lon_sp3i);
+		//! @moos_param  lon_sp3s  Max width of the third stick
+		m_MissionReader.GetConfigurationParam("lon_sp3s",lon_sp3s);
+
+	// Separation between sticks
+		//! @moos_param  lon_aux1i  min separation between patterns 1 and 2
+		m_MissionReader.GetConfigurationParam("lon_aux1i",lon_aux1i);
+		//! @moos_param  lon_aux1s  max separation between patterns 1 and 2
+		m_MissionReader.GetConfigurationParam("lon_aux1s",lon_aux1s);
+		//! @moos_param  lon_aux2i  min separation between patterns 2 and 3
+		m_MissionReader.GetConfigurationParam("lon_aux2i",lon_aux2i);
+		//! @moos_param  lon_aux2s  max separation between patterns 2 and 3
+		m_MissionReader.GetConfigurationParam("lon_aux2s",lon_aux2s);
+
+	// ROBOT SPEEDS
+		//! @moos_param  v_lineal_mover  Linear speed (m/s) to approach the pattern
+		m_MissionReader.GetConfigurationParam("v_lineal_mover",v_lineal_mover);
+		//! @moos_param  agiro_mover  Angular speed (deg/s) to approach the pattern
+		m_MissionReader.GetConfigurationParam("agiro_mover",agiro_mover);
+
+		// PHASE 2 (Close to the pattern)
+		//! @moos_param  v_lineal_f2_rap  Liner speed (m/s) to approach the pattern in phase 2
+		m_MissionReader.GetConfigurationParam("v_lineal_f2_rap",v_lineal_f2_rap);
+		//! @moos_param  v_lineal_f2_len  Linear speed (m/s) to approaach the pattern when it's too close (<distancia_parada)
+		m_MissionReader.GetConfigurationParam("v_lineal_f2_len",v_lineal_f2_len);
+		//! @moos_param  agiro_f2_rap  Angular speed (deg/s) to approach the pattern in phase 2
+		m_MissionReader.GetConfigurationParam("agiro_f2_rap",agiro_f2_rap);
+		//! @moos_param  agiro_f2_len  Angular speed (deg/s) to approach the pattern when it's too close (<distancia_parada)
+		m_MissionReader.GetConfigurationParam("agiro_f2_len",agiro_f2_len);
+  
   //cga:vble debug from the configuration file. If it is true, the wxwindow is displayed
-  //! @moos_param  debug If it is true, a wxwindow is displayed
+  //! @moos_param  debug If it is true, a wxwindow is displayed with the location of the pattern
   m_MissionReader.GetConfigurationParam("debug",debug);
   if (debug)
     win=new CDisplayWindowPlots("Docking debug window");
@@ -122,83 +131,64 @@ bool CDockingApp::OnStartUp()
   //-------------------------
   // Set initial state
   //-------------------------
-  f2activada = false;				//Init the sistem as Far from docking!  
+  go_docking = false;
+  charge = 1.0;								//is charging
+  found_in_previous_iteration = false;		//Was the pattern found in the previous scan?
+
+  f2activada = false;				//Init the sistem in phase1, far from docking!
   contador_no_encontrados = 0;		//number of non-matches
   encontrados = 0;					//number of matches
-  patronverdadero = false;			//only after 4 consecutive matches, we declare the pattern as the correct one
+  patronverdadero = false;			//only after 4 consecutive matches, we declare the pattern as found
   angulovi = 0;
   angulovf = 0;
   disv = 0;  
-  ok_anterior = false;				//Was the pattern found in the previous scan?
+  
   punto_inicio = 0;
   punto_fin = 0;
   contfases2 = 0;
 
-  //miparking=true;
-  //robotenposicion = false;
-  //pruebafich = 0;
-
   //Start doing nothing!!
-  go_docking = false;
-  charge = 1.0;			//is charging
-  park = 0.0;			//is not parking
-
+  
 
   return DoRegistrations();
 }
 
 
 //---------------------------------------------------------------------
-// dibujar_puntos: Display Laser detected points in the "debug" window
+// dibujar_puntos: Display sub-pattern detected points in the "debug" window
 //---------------------------------------------------------------------
 void CDockingApp::dibujar_puntos(int p1i,int p1f,int p2i,int p2f,int p3i,int p3f)
 {
-  mrpt::slam::CSimplePointsMap TheMap,TheMap2;
-  int i;
-  mrpt::math::CVectorFloat xs,ys,zs,xs1,ys1,zs1;
+	mrpt::slam::CSimplePointsMap TheMap,TheMap1,TheMap2,TheMap3;
+	int i;
+	mrpt::math::CVectorFloat xs,ys,zs,xs1,ys1,zs1;
 
+	//1. All the scanned points!
+	for(i=0;i<TAM;i++)
+		TheMap.insertPoint(posX[i]/100,posY[i]/100,0,0.9,0.9,0.9);
+	// Display all in black
+	TheMap.getAllPoints(xs,ys,zs);
+	win->plot(xs,ys,".k3","scan");
 
-  /*	for(i=0;i<p1i;i++){
-                TheMap.insertPoint(posX[i]/100,posY[i]/100);
-        } */
+	// Insert points of sub-pattern1 (red)
+	for( i=p1i;i<=p1f;i++ )
+		TheMap1.insertPoint( posX[i]/100,posY[i]/100,0.0,0.9,0.0,0.0 );	
+	TheMap1.getAllPoints(xs,ys,zs);
+	win->plot(xs,ys,".r3","pattern1");
 
-  for(i=p1i;i<=p1f;i++){
-      TheMap.insertPoint(posX[i]/100,posY[i]/100,0,0.9,0,0);
-    }
+	// Insert points of sub-pattern2 (green)
+	for( i=p2i;i<=p2f;i++ )
+		TheMap2.insertPoint( posX[i]/100,posY[i]/100,0.0,0.0,0.9,0.0 );	
+	TheMap2.getAllPoints(xs,ys,zs);
+	win->plot(xs,ys,".g3","pattern2");
 
-  /*	for(i=p1f+1;i<p2i;i++){
-                TheMap.insertPoint(posX[i]/100,posY[i]/100);
-        } */
-
-  for(i=p2i;i<=p2f;i++){
-      TheMap.insertPoint(posX[i]/100,posY[i]/100,0,0.9,0.9,0.9);
-    }
-
-  /*	for(i=p2f+1;i<p3i;i++){
-                TheMap.insertPoint(posX[i]/100,posY[i]/100);
-        } */
-
-  for(i=p3i;i<=p3f;i++){
-      TheMap.insertPoint(posX[i]/100,posY[i]/100,0,0.9,0.9,0.9);
-    }
-
-  /*	for(i=p3f+1;i<TAM;i++){
-                TheMap.insertPoint(posX[i]/100,posY[i]/100);
-        } */
-
-  for(i=0;i<TAM;i++){
-      TheMap2.insertPoint(posX[i]/100,posY[i]/100,0,0.9,0.9,0.9);
-    }
-  TheMap2.getAllPoints(xs1,ys1,zs1);
-  win->plot(xs1,ys1,".b3");
-
-  //sleep(150);
-
-  TheMap.getAllPoints(xs,ys,zs);
-  win->plot(xs,ys,".r3");
-
-  //sleep(150);
+	// Insert points of sub-pattern3 (blue)
+	for(i=p3i;i<=p3f;i++)
+		TheMap3.insertPoint( posX[i]/100,posY[i]/100,0.0,0.0,0.0,0.9 );	
+	TheMap3.getAllPoints(xs,ys,zs);
+	win->plot(xs,ys,".b3","pattern3");	
 }
+
 
 //---------------------------------------------------------
 // Check that found pattern matchs those previously found
@@ -210,79 +200,25 @@ void CDockingApp::comprobar_patron_verdadero(int pi,int pf)
 	float d=0;
 	float aux=20;
 
-	ai=pi*angulo_giro_hok;
-	af=pf*angulo_giro_hok;
-	d=obs->scan[pi]*100;
+	ai = pi*angulo_giro_hok;
+	af = pf*angulo_giro_hok;
+	d = obs->scan[pi]*100;
   
-	ok=false;
+	pattern_found = false;
 
-	if((angulovi<(ai+aux))&&(angulovi>(ai-aux)))
+	if( (angulovi<(ai+aux))&&(angulovi>(ai-aux)) )
 	{//punto inicio correcto
-		if((angulovf<(af+aux))&&(angulovf>(af-aux)))
+		if( (angulovf<(af+aux))&&(angulovf>(af-aux)) )
 		{ // punto fin correcto
-			if((disv<(d+aux))&&(disv>(d-aux)))
+			if( (disv<(d+aux))&&(disv>(d-aux)) )
 			{ //distancia correcta
-				ok = true;			//pattern found!!
+				pattern_found = true;			//pattern found!!
 				angulovi = ai;
 				angulovf = af;
 				disv = d;
 			}
 		}
 	}
-}
-
-
-
-void CDockingApp::comprobar_pendientes_rectas(float r1b,float r2b,float r3b){
-
-  float auxiliar;
-  float limite=5;
-
-  auxiliar=r1b-r2b;
-  if(auxiliar<0){
-      auxiliar=auxiliar*(-1);
-    }
-  if(auxiliar>limite){
-      ok=false;
-    }
-  auxiliar=r2b-r3b;
-  if(auxiliar<0){
-      auxiliar=auxiliar*(-1);
-    }
-  if(auxiliar>limite){
-      ok=false;
-    }
-  auxiliar=r1b-r3b;
-  if(auxiliar<0){
-      auxiliar=auxiliar*(-1);
-    }
-  if(auxiliar>limite){
-      ok=false;
-    }
-
-  auxiliar=valorbfinal-r1b;
-  if(auxiliar<0){
-      auxiliar=auxiliar*(-1);
-    }
-  if(auxiliar>limite){
-      ok=false;
-    }
-
-  auxiliar=valorbfinal-r2b;
-  if(auxiliar<0){
-      auxiliar=auxiliar*(-1);
-    }
-  if(auxiliar>limite){
-      ok=false;
-    }
-
-  auxiliar=valorbfinal-r3b;
-  if(auxiliar<0){
-      auxiliar=auxiliar*(-1);
-    }
-  if(auxiliar>limite){
-      ok=false;
-    }
 }
 
 
@@ -296,27 +232,25 @@ void CDockingApp::mover_fase2(float cp,float dis,float cory,float corx)
   float agiro_rad_len;
   float volt=0;
 
-  //CMOOSVariable *PfVoltaje= GetMOOSVar("fVoltaje");
-  //volt=pfVoltaje->GetDoubleVal();
+  agiro_rad_rap = DEG2RAD(agiro_f2_rap);
+  agiro_rad_len = DEG2RAD(agiro_f2_len);
 
-  agiro_rad_rap=DEG2RAD(agiro_f2_rap);
-  agiro_rad_len=DEG2RAD(agiro_f2_len);
-
-  cout << "[AutoDocking_Laser] Working in phase 2 " << endl;
+  cout << "[AutoDocking_Laser] *************  Working in PHASE 2  ************* " << endl;
   //cout << "angulo central: " << angulo_central << endl;
   //cout << "centro patron: " << cp << endl;
 
   contfases2++;
-  if(contfases2=20)
+  if(contfases2 = 20)
   {
-      if(!(((corx<10)&&(corx>-10))||((cory<10)&&(cory>-10))))
+      if( !(((corx<10)&&(corx>-10)) || ((cory<10)&&(cory>-10))) )
 	  {
           f2activada = false;	//return to far mode operation
           contfases2=0;
       }
   }
 
-  if((cp<=(angulo_central+3))&&(cp>=(angulo_central-3))){
+  if( (cp<=(angulo_central+3))&&(cp>=(angulo_central-3)) )
+  {
       m_Comms.Notify("MOTION_CMD_W",0.0);
       //cga:if((dis<distancia_parada)||(volt>12.1)){
       //cga:robotenposicion=true;
@@ -390,18 +324,18 @@ void CDockingApp::MoverRobot()
   //cout << "valor b: " << vlb << endl;
 
 
-  agiro_rad=DEG2RAD(agiro_mover);
+  agiro_rad = DEG2RAD(agiro_mover);
 
   //hallo el punto medio del patron donde deberia estar justo el frente del hokuyo
-  poscpatron=pf-pi+1;
-  poscpatron=poscpatron*(longitud_total_patron/2);
-  poscpatron=poscpatron/longitud_total_patron;
-  poscpatron=poscpatron+pi;
-  centropatron=poscpatron*angulo_giro_hok;
+  poscpatron = pf-pi+1;
+  poscpatron = poscpatron*(longitud_total_patron/2);
+  poscpatron = poscpatron/longitud_total_patron;
+  poscpatron = poscpatron+pi;
+  centropatron = poscpatron*angulo_giro_hok;
 
-  poscpatron=poscpatron+0.5;
-  poscpatron=floor(poscpatron);
-  indice=(unsigned int) poscpatron;
+  poscpatron = poscpatron+0.5;
+  poscpatron = floor(poscpatron);
+  indice = (unsigned int) poscpatron;
 
   //cout << "centropatron: " << centropatron << endl;
   //necesito recta perpendicular que pase por centro patron
@@ -508,86 +442,83 @@ void CDockingApp::MoverRobot()
     }//else2
 }
 
+
+//--------------------------------------------------------------------------
+// Check that the three sub-patters found belong to the same line in space
+//--------------------------------------------------------------------------
 void CDockingApp::ComprobacionFinal()
 {
+	int indaux;
+	int errores,npos;
+	float sumaxy,sumax,sumay,va,vb,vd,sumax2;
 
-  int indaux;
-  int errores,npos;
-  float sumaxy,sumax,sumay,va,vb,vd,sumax2;
+	sumaxy=0;
+	sumax=0;
+	sumay=0;
+	npos=0;
+	sumax2=0;
+	va=0;
+	vb=0;
 
-  sumaxy=0;
-  sumax=0;
-  sumay=0;
-  npos=0;
-  sumax2=0;
-  va=0;
-  vb=0;
-  //primero hayo la ecuacion de la recta de todos los puntos
-  for(indaux=p1ini;indaux<=p1fin;indaux++){//for1
+	//Line equation of all points from subpattern 1, 2 and 3
+	for(indaux=p1ini;indaux<=p1fin;indaux++)
+	{
+		sumaxy=sumaxy+(posX[indaux]*posY[indaux]);
+		sumax=sumax+posX[indaux];
+		sumay=sumay+posY[indaux];
+		npos=npos+1;
+		sumax2=sumax2+(posX[indaux]*posX[indaux]);
+	}
+	for(indaux=p2ini;indaux<=p2fin;indaux++)
+	{
+		sumaxy=sumaxy+(posX[indaux]*posY[indaux]);
+		sumax=sumax+posX[indaux];
+		sumay=sumay+posY[indaux];
+		npos=npos+1;
+		sumax2=sumax2+(posX[indaux]*posX[indaux]);
+	}
+	for(indaux=p3ini;indaux<=p3fin;indaux++)
+	{
+		sumaxy=sumaxy+(posX[indaux]*posY[indaux]);
+		sumax=sumax+posX[indaux];
+		sumay=sumay+posY[indaux];
+		npos=npos+1;
+		sumax2=sumax2+(posX[indaux]*posX[indaux]);
+	}
 
-      sumaxy=sumaxy+(posX[indaux]*posY[indaux]);
-      sumax=sumax+posX[indaux];
-      sumay=sumay+posY[indaux];
-      npos=npos+1;
-      sumax2=sumax2+(posX[indaux]*posX[indaux]);
-    }//for1
-  for(indaux=p2ini;indaux<=p2fin;indaux++){//for1
+	vb=((npos*sumaxy)-(sumay*sumax))/((npos*sumax2)-(sumax*sumax));
+	va=(sumay-(vb*sumax))/npos;
 
-      sumaxy=sumaxy+(posX[indaux]*posY[indaux]);
-      sumax=sumax+posX[indaux];
-      sumay=sumay+posY[indaux];
-      npos=npos+1;
-      sumax2=sumax2+(posX[indaux]*posX[indaux]);
-    }//for1
-  for(indaux=p3ini;indaux<=p3fin;indaux++){//for1
-
-      sumaxy=sumaxy+(posX[indaux]*posY[indaux]);
-      sumax=sumax+posX[indaux];
-      sumay=sumay+posY[indaux];
-      npos=npos+1;
-      sumax2=sumax2+(posX[indaux]*posX[indaux]);
-    }//for1
-
-  vb=((npos*sumaxy)-(sumay*sumax))/((npos*sumax2)-(sumax*sumax));
-  va=(sumay-(vb*sumax))/npos;
-
-  //ahora compruebo que "casi" todos los puntos disten menos de 3cm de la recta
-  errores=0;
-  for(indaux=p1ini;indaux<=p1fin;indaux++){//for1
-      vd=(vb*posX[indaux])-posY[indaux]+va;
-      if(vd<0){//si es negativo lo pongo positivo por el valor absoluto
-          vd=vd*-1;
-        }
-      vd=vd/(sqrt((vb*vb)+1));
-      if(vd>distancia_comprobacion){//if2
-          errores++;
-
-        }//if2
-    }//for1
-
-  for(indaux=p2ini;indaux<=p2fin;indaux++){//for1
-      vd=(vb*posX[indaux])-posY[indaux]+va;
-      if(vd<0){//si es negativo lo pongo positivo por el valor absoluto
-          vd=vd*-1;
-        }
-      vd=vd/(sqrt((vb*vb)+1));
-      if(vd>distancia_comprobacion){//if2
-          errores++;
-
-        }//if2
-    }//for1
-
-  for(indaux=p3ini;indaux<=p3fin;indaux++){//for1
-      vd=(vb*posX[indaux])-posY[indaux]+va;
-      if(vd<0){//si es negativo lo pongo positivo por el valor absoluto
-          vd=vd*-1;
-        }
-      vd=vd/(sqrt((vb*vb)+1));
-      if(vd>distancia_comprobacion){//if2
-          errores++;
-
-        }//if2
-    }//for1
+	
+	//check that "almost" every point fall within this line. Error < "distancia_comprobacion"	
+	errores = 0;
+	for( indaux=p1ini;indaux<=p1fin;indaux++ )
+	{
+		vd = (vb*posX[indaux])-posY[indaux]+va;
+		if( vd<0 )	//si es negativo lo pongo positivo por el valor absoluto		
+			vd=vd*-1;		
+		vd = vd/(sqrt((vb*vb)+1));
+		if( vd>distancia_comprobacion )
+			errores++;
+	}
+	for( indaux=p2ini;indaux<=p2fin;indaux++ )
+	{
+		vd = (vb*posX[indaux])-posY[indaux]+va;
+		if(vd<0) 
+			vd=vd*-1;		
+		vd = vd/(sqrt((vb*vb)+1));
+		if( vd>distancia_comprobacion )
+			errores++;
+	}
+	for( indaux=p3ini;indaux<=p3fin;indaux++ )
+	{
+		vd = (vb*posX[indaux])-posY[indaux]+va;
+		if(vd<0)
+			vd=vd*-1;
+		vd = vd/(sqrt((vb*vb)+1));
+		if( vd>distancia_comprobacion )
+			errores++;
+	}
 
   //compruebo que en los huecos no haya puntos a menos de distancia comprobacion
   /*
@@ -616,313 +547,390 @@ void CDockingApp::ComprobacionFinal()
         }//for1
    */
 
-  if(errores<2)
-  {
-      ok=true;
-      valorafinal=va;
-      valorbfinal=vb;
-  }
-  else
-	ok=false;
+	// If less than 2 errors, declare the pattern as found!
+	if( errores<2 )
+	{		
+		pattern_found = true;
+		valorafinal = va;
+		valorbfinal = vb;
+	}
+	else
+	{
+		pattern_found = false;
+		printf("[AutoDockingLaser]: ERROR Sub-patterns do not fall in a line, %u errors\n", errores);
+	}
 }
 
-//--------------------------------------
-// Obtener_puntos_plano : Read Laser
-//--------------------------------------
+//-----------------------------------------------------------------------
+// Obtener_puntos_plano : Read Laser Scan
+// The Laser Scan provides an array with distances(m) to the obstacles
+// This function transform the array of distances, to an array of coordinates (x,y)
+//-----------------------------------------------------------------------
 void CDockingApp::Obtener_puntos_plano()
 {
 	unsigned int ind;
 	float dis,px,py;
-	float ang_hokuyo = 0;
+	float ang_hokuyo = 0;		//Angle(deg) indicating the angle of one point of the scan (used as iterator)
 	float ang_calculo = 0;
 	CSerializablePtr obj;
 	float cua1,cua2,cua3,apertura;
 
-	//Get laser readings
-	CMOOSVariable *PLaser= GetMOOSVar("LASER1");
-	mrpt::utils::RawStringToObject(PLaser->GetStringVal(),obj);
-	if (obj && IS_CLASS(obj,CObservation2DRangeScan))
-		obs = CObservation2DRangeScanPtr(obj);
-	else
-		printf("[CAutoDocking_Laser] ERROR: LASER1 is not a CObservation2DRangeScan \n");
-
-	apertura=obs->aperture;
-	apertura=RAD2DEG(apertura);
-	TAM=obs->scan.size();
-
-	angulo_giro_hok=apertura/TAM;
-	angulo_central=apertura/2;
-
-	cua1=(apertura/2)-90;
-	cua2=apertura/2;
-	cua3=(apertura/2)+90;
-
-	//initialize empty vector
-	for(ind=0;ind<TAM;ind++)
+	// Get laser readings
+	//--------------------
+	CMOOSVariable *PLaser= GetMOOSVar(laserVar);
+	if (PLaser)
 	{
-		posX[ind]=0;
-		posY[ind]=0;
+		mrpt::utils::RawStringToObject(PLaser->GetStringVal(),obj);
+		if (obj && IS_CLASS(obj,CObservation2DRangeScan))
+			obs = CObservation2DRangeScanPtr(obj);
+		else
+			printf( "[CAutoDocking_Laser] ERROR: %s is not a CObservation2DRangeScan \n",laserVar.c_str() );
+	}
+	else
+	{
+		printf( "[CAutoDocking_Laser] ERROR: Variable %s not found!\n",laserVar.c_str() );
+		return;
 	}
 
-	//Check readings from laser
-	for(ind=0;ind<obs->scan.size();ind++)
+	// Read parameters
+	//------------------
+	apertura = obs->aperture;				//laser aperture in rad
+	apertura = RAD2DEG(apertura);			//laser aperture in deg, typically 180º
+	TAM = obs->scan.size();					//Number of points in the scan
+	angulo_giro_hok = apertura/(TAM-1);		//angular resolution = deg/point
+	mrpt::poses::CPose3D laser_pose;
+	obs->getSensorPose(laser_pose);
+
+	// Is laser rolled?
+	if( (abs(laser_pose.roll()) - PI) < 0.01 )
+	{		
+		// Scans ar not from right to left!, but left to right!
+		std::reverse(obs->scan.begin(),obs->scan.end());
+	}
+
+
+
+	//printf("[TEST]: Aperture=%.3f, size=%u, ang_res=%.3f\n",apertura,TAM,angulo_giro_hok);
+
+	//Define angles of the working regions (cuadrants)    
+	//							 cua2
+	//                     cua3 __|__ cua1
+	//                            | 
+	angulo_central = apertura/2;		//the center of the scan
+	cua1 = (apertura/2)-90;
+	cua2 = apertura/2;
+	cua3 = (apertura/2)+90;
+
+	//reset vector of detected obstacles (x,y)
+	for(ind=0;ind<TAM;ind++)
 	{
-		dis=obs->scan[ind]*100;
-		//Ignore out of range values
-		if((dis<1)||(dis>200))
+		posX[ind] = 0.0;
+		posY[ind] = 0.0;
+	}
+
+
+	// Transform scan laser to X,Y
+	//----------------------------
+	for( ind=0;ind<TAM;ind++ )
+	{
+		dis = obs->scan[ind]*100;	//distance (cm) to point [ind]
+		//Ignore out of range values, set to origin
+		if( (dis<1.0)||(dis>200.0) )
 		{
-			px=0;
-			py=0;
+			px = 0.0;
+			py = 0.0;
 		}
 		else
 		{
-			if(ang_hokuyo<=cua1)
+			//Get (x,y) according to working region (cua1,cua2,cua3)
+			if( ang_hokuyo<=cua1 )
 			{
-				ang_calculo=cua1-ang_hokuyo;
-				ang_calculo=DEG2RAD(ang_calculo);
-				py=sin(ang_calculo)*dis;
-				px=cos(ang_calculo)*dis;
-				py=py*(-1); //en esta zona la posicion "y" es negativa
+				ang_calculo = cua1-ang_hokuyo;
+				ang_calculo = DEG2RAD(ang_calculo);
+				py = sin(ang_calculo)*dis;
+				px = cos(ang_calculo)*dis;
+				py = py*(-1); //en esta zona la posicion "y" es negativa
+			}
+			else if( (ang_hokuyo>cua1)&&(ang_hokuyo<=cua2) )
+			{
+				ang_calculo = ang_hokuyo-cua1;
+				ang_calculo = DEG2RAD(ang_calculo);
+				py = sin(ang_calculo)*dis;
+				px = cos(ang_calculo)*dis;
+			}
+			else if( (ang_hokuyo>cua2)&&(ang_hokuyo<=cua3) )
+			{
+				ang_calculo = ang_hokuyo-cua2;
+				ang_calculo = DEG2RAD(ang_calculo);
+				py = cos(ang_calculo)*dis;
+				px = sin(ang_calculo)*dis;
+				px = px*(-1);//en esta zona la x es negativa
 			}
 			else
 			{
-				if((ang_hokuyo>cua1)&&(ang_hokuyo<=cua2))
-				{
-					ang_calculo=ang_hokuyo-cua1;
-					ang_calculo=DEG2RAD(ang_calculo);
-					py=sin(ang_calculo)*dis;
-					px=cos(ang_calculo)*dis;
-				}
-				else
-				{
-					if((ang_hokuyo>cua2)&&(ang_hokuyo<=cua3))
-					{
-						ang_calculo=ang_hokuyo-cua2;
-						ang_calculo=DEG2RAD(ang_calculo);
-						py=cos(ang_calculo)*dis;
-						px=sin(ang_calculo)*dis;
-						px=px*(-1);//en esta zona la x es negativa
-					}
-					else
-					{
-						ang_calculo=ang_hokuyo-cua3;
-						ang_calculo=DEG2RAD(ang_calculo);
-						py=sin(ang_calculo)*dis;
-						px=cos(ang_calculo)*dis;
-						px=px*(-1);//en esta zona la x es negativa
-						py=py*(-1);//en esta zona la x es negativa
-					}
-				}
+				ang_calculo=ang_hokuyo-cua3;
+				ang_calculo=DEG2RAD(ang_calculo);
+				py=sin(ang_calculo)*dis;
+				px=cos(ang_calculo)*dis;
+				px=px*(-1);//en esta zona la x es negativa
+				py=py*(-1);//en esta zona la x es negativa
 			}
 		}
-		posX[ind]=px;
-		posY[ind]=py;
-		ang_hokuyo=ang_hokuyo+angulo_giro_hok;
+
+		//Save location (x,y) of the current scan point
+		posX[ind] = px;
+		posY[ind] = py;
+
+		//increase the counter of the angle
+		ang_hokuyo = ang_hokuyo + angulo_giro_hok;
 	}//end for
 }
 
 
-void CDockingApp::BuscaPatron(int ind,int &pfin,float &longitud, float &valora, float &valorb){
+//---------------------------------------------------------------------------------------------
+// BuscaPatron: Search for a sub-pattern (plannar and continuous surface = line) in the laser scans
+//				ind = point to start the search
+//				pfin = point where the search ended
+//				longitud = length of the sub-pattern found (planar continuous surface)
+//				valor_a = 
+//				valor_b = Slope of the line containing the sub-pattern
+//---------------------------------------------------------------------------------------------
+void CDockingApp::BuscaPatron(int ind,int &pfin,float &longitud, float &valora, float &valorb)
+{
+	unsigned int ind2,indaux;
+	int npos;
+	double sumaxy,sumax,sumay,va,vb,vd,sumax2;
+	bool salir = false;
 
+	ind2 = ind+1;	//the next point in the scan laser	
+	sumax = 0;		//Aggregate value of X components
+	sumay = 0;		//Aggregate value of Y components
+	sumaxy = 0;		//Aggregate value of X*Y components
+	sumax2 = 0;		//Aggregate value of X*X components
+	npos = 0;
 
-  unsigned int ind2,indaux;
-  int npos;
-  double sumaxy,sumax,sumay,va,vb,vd,sumax2;
-  bool salir=false;
+	// We need at least 2 consecutive points to check the pattern (a line)
+	// Is the next point in the search an invalid point?
+	if( (posX[ind2]==0) && (posY[ind2]==0) )
+	{
+		//invalid point
+		pfin = ind2;		//search ended at point
+		longitud = 1;		//distance of max line (planar surface) found
+		valora = 1;			//Slope found
+		valorb = 1;			
+	}
+	else
+	{
+		//next point is a valid point, lets check!
+		for( indaux=ind;indaux<=ind2;indaux++ )
+		{
+			sumaxy += (posX[indaux]*posY[indaux]);
+			sumax += posX[indaux];
+			sumay += posY[indaux];
+			npos += 1;
+			sumax2 += (posX[indaux]*posX[indaux]);
+		}
 
-  ind2=ind+1;
-  sumaxy=0;
-  sumax=0;
-  sumay=0;
-  sumax2=0;
-  npos=0;
+		//Some calculus here for estimating the line slope
+		vb = ((npos*sumaxy)-(sumay*sumax))/((npos*sumax2)-(sumax*sumax));
+		va = (sumay-(vb*sumax))/npos;
+		
+		ind2++;
+		while( (ind2<TAM-2)&&(!salir) )
+		{
+			vd = (vb*posX[ind2])-posY[ind2]+va;
+			if( vd<0 )			
+				vd = vd*-1;
+			
+			vd = vd/(sqrt((vb*vb)+1));
+			if( vd>distancia_corte )
+				salir = true;		//Stop searching				
+			else
+			{
+				sumaxy = 0;
+				sumax = 0;
+				sumay = 0;
+				sumax2 = 0;
+				npos = 0;
+				for( indaux=ind;indaux<=ind2;indaux++ )
+				{
+					sumaxy=sumaxy+(posX[indaux]*posY[indaux]);
+					sumax=sumax+posX[indaux];
+					sumay=sumay+posY[indaux];
+					npos=npos+1;
+					sumax2=sumax2+(posX[indaux]*posX[indaux]);
+				}
 
-  if((posX[ind2]==0)&&(posY[ind2]==0)){
-      pfin=ind2;
-      longitud=1;
-      valora=1;
-      valorb=1;
-    }
-  else{
-      for(indaux=ind;indaux<=ind2;indaux++){//for1
-          sumaxy=sumaxy+(posX[indaux]*posY[indaux]);
-          sumax=sumax+posX[indaux];
-          sumay=sumay+posY[indaux];
-          npos=npos+1;
-          sumax2=sumax2+(posX[indaux]*posX[indaux]);
+				vb = ((npos*sumaxy)-(sumay*sumax))/((npos*sumax2)-(sumax*sumax));
+				va = (sumay-(vb*sumax))/npos;
+				ind2++;
+			}
+		}//end-while
 
-        }//for1
-      vb=((npos*sumaxy)-(sumay*sumax))/((npos*sumax2)-(sumax*sumax));
-      va=(sumay-(vb*sumax))/npos;
-      ind2++;
-      while((ind2<TAM-2)&&(!salir)){
-          vd=(vb*posX[ind2])-posY[ind2]+va;
-          if(vd<0){
-              vd=vd*-1;
-            }
-          vd=vd/(sqrt((vb*vb)+1));
-          if(vd>distancia_corte){
-              salir=true;
-            }
-          else{
-              sumaxy=0;
-              sumax=0;
-              sumay=0;
-              sumax2=0;
-              npos=0;
-              for(indaux=ind;indaux<=ind2;indaux++){//for1
-                  sumaxy=sumaxy+(posX[indaux]*posY[indaux]);
-                  sumax=sumax+posX[indaux];
-                  sumay=sumay+posY[indaux];
-                  npos=npos+1;
-                  sumax2=sumax2+(posX[indaux]*posX[indaux]);
-                }//for1
-              vb=((npos*sumaxy)-(sumay*sumax))/((npos*sumax2)-(sumax*sumax));
-              va=(sumay-(vb*sumax))/npos;
-              ind2++;
-            }
-        }
-
-      ind2=ind2-1;
-      pfin=ind2;
-      longitud=sqrt(((posX[ind2]-posX[ind])*(posX[ind2]- posX[ind]))
-                    +((posY[ind2]- posY[ind])*(posY[ind2]-posY[ind])));
-      valora=va;
-      valorb=vb;
-    }
-
+		// Return the parameters of the surface found
+		ind2 = ind2-1;
+		pfin = ind2;
+		longitud = sqrt( ((posX[ind2]-posX[ind])*(posX[ind2]- posX[ind]))
+					+ ((posY[ind2]- posY[ind])*(posY[ind2]-posY[ind])) );
+		valora = va;
+		valorb = vb;
+	}//end if next-point is valid
 }
+
+
 
 bool CDockingApp::OnCommandMsg( CMOOSMsg Msg )
 {
-
   return true;
 }
 
 
-void CDockingApp::Buscar_Patron_Completo(unsigned int pinicio,unsigned int pfin){
 
-  unsigned int ind=0;
-  unsigned int ind2=0;
-  unsigned int ind3=0;
-  int indaux=0;
-  float lon1,lon2,lon3,lonaux1,lonaux2,vr1a,vr1b,vr2a,vr2b,vr3a,vr3b;
+//----------------------------------------------------------------------------------
+// Search for the complete pattern in the scan lasser, from "init_point" to "end_point"
+//----------------------------------------------------------------------------------
+void CDockingApp::Buscar_Patron_Completo(unsigned int pinicio,unsigned int pfin)
+{
+	pattern_found = false;
+	unsigned int ind = pinicio;
+	unsigned int ind2 = 0;
+	unsigned int ind3 = 0;
+	
+	int indaux = 0;
+	float lon1,lon2,lon3,lonaux1,lonaux2,vr1a,vr1b,vr2a,vr2b,vr3a,vr3b;
+	int puntosp1 = 0;
+	int puntosp2 = 0;
+	int puntosp3 = 0;
+
+	//Reset position of the different pattern's Sticks in the scan (from previous searches)
+	p1ini = 0;
+	p1fin = 0;
+	p2ini = 0;
+	p2fin = 0;
+	p3ini = 0;
+	p3fin = 0;
+	// Reset dimensions fonud of the sticks in the pattern, and their separation (from previous searches)
+	lon1 = 0;
+	lon2 = 0;
+	lon3 = 0;
+	lonaux1 = 0;
+	lonaux2 = 0;
+
+	// Reset slopes of the lines (sub-patterns) found
+	vr1a=0;
+	vr2a=0;
+	vr1b=0;
+	vr2b=0;
+	vr3a=0;
+	vr3b=0;
+
+	// Start searching
+	while( (ind<(pfin-10)) && (!pattern_found) )
+	{
+		//Discard points that are at the origin (0,0) ->comming from out of range scans (see Obtener_puntos_plano)
+		if( (posX[ind]!=0.0) || (posY[ind]!=0.0) )
+		{
+			//Search for a sub-pattern (planar surface)
+			BuscaPatron(ind,indaux,lon1,vr1a,vr1b);
+
+			//Are dimensions correct for Sub-pattern 1?
+			if( (lon1>lon_sp1i)&&(lon1<lon_sp1s) )
+			{
+				//YES, first sub-pattern found!
+				p1ini = ind;		//start point of first sub-pattern
+				p1fin = indaux;		//end point of first sub-pattern
+				//if (debug) printf("[AutoDockingLaser]: First pattern found at points %u-%u, with long=%0.3fcm\n",p1ini,p1fin,lon1);
+
+				//Keep searching
+				ind2 = indaux+4;
+				while( (ind2<(pfin-1)) && (!pattern_found) )
+				{
+					if( (posX[ind2]!=0.0) || (posY[ind2]!=0.0) )
+					{
+						//Search for another sub-pattern (planar surface)
+						BuscaPatron(ind2,indaux,lon2,vr2a,vr2b);
+						
+						//Are dimensions correct for sub-pattern 2?
+						if( (lon2>lon_sp2i)&&(lon2<lon_sp2s) )
+						{
+							//Check that distance between the two first sub-patterns is correct
+							lonaux1 = sqrt(((posX[ind2]-posX[p1fin])*(posX[ind2]-posX[p1fin]))+((posY[ind2]-posY[p1fin])*(posY[ind2]-posY[p1fin])));
+							if( (lonaux1<lon_aux1s)&&(lonaux1>lon_aux1i) )
+							{	
+								// YES, second pattern found!
+								p2ini = ind2;
+								p2fin = indaux;
+								//if (debug) printf("[AutoDockingLaser]: Second pattern found at points %u-%u, with long=%0.3fcm\n",p2ini,p2fin,lon2);
+
+								//Keep searching
+								ind3=indaux+4;
+								while( (ind3<(pfin-1))&&(!pattern_found) )
+								{									
+									if( (posX[ind3]!=0.0) || (posY[ind3]!=0.0) )
+									{
+										//Search for another sub-pattern (planar surface)
+										BuscaPatron(ind3,indaux,lon3,vr3a,vr3b);
+
+										//Are dimensions correct for sub-pattern 3?
+										if( (lon3>lon_sp3i)&&(lon3<lon_sp3s) )
+										{
+											//Check that distance between sub-patterns is correct
+											lonaux2 = sqrt(((posX[ind3]-posX[p2fin])*(posX[ind3]-posX[p2fin]))+((posY[ind3]-posY[p2fin])*(posY[ind3]-posY[p2fin])));
+											if( (lonaux2>lon_aux2i)&&(lonaux2<lon_aux2s) )
+											{
+												// YES, third pattern found!
+												p3ini = ind3;
+												p3fin = indaux;
+												//if (debug) printf("[AutoDockingLaser]: Third pattern found at points %u-%u, with long=%0.3fcm\n",p3ini,p3fin,lon3);
+												printf("[AutoDockingLaser]: Pattern found-> [%.3f] %.3f [%.3f] %.3f [%.3f] \n",lon3,lonaux2,lon2,lonaux1,lon1);
+												//Finally, check that all sub-patterns fall in a line
+												// this method set the pattern_found to true/false
+												ComprobacionFinal();
+
+												puntosp1 = p1fin-p1ini+1;
+												puntosp2 = p2fin-p2ini+1;
+												puntosp3 = p3fin-p3ini+1;
 
 
-  int puntosp1=0;
-  int puntosp2=0;
-  int puntosp3=0;
+												if( pattern_found )
+												{
+													//check if pattern has been repeteadly found (patronverdadero > 4 matches)
+													if( patronverdadero )
+													{
+														comprobar_patron_verdadero(p1ini,p3fin);
+													}
+												}
+											}
 
-  p1ini=0;
-  p1fin=0;
-  p2ini=0;
-  p2fin=0;
-  p3ini=0;
-  p3fin=0;
+										}//if5
+									}
+									ind3++;
+								}// end-while 3rd pattern not_found
 
-  ind2=0;
-  lon1=0;
-  lon2=0;
-  lon3=0;
-  lonaux1=0;
-  lonaux2=0;
-  vr1a=0;
-  vr2a=0;
-  vr1b=0;
-  vr2b=0;
-  vr3a=0;
-  vr3b=0;
+							}//if distance between pattern 1 and 2
+						}//if-second pattern found
+					}// end if correct point
+					ind2++;
+                }// end-while 2nd pattern not_found
 
-  ok=false;
-  ind=pinicio;
-  while((ind<(pfin-10))&&(!ok)) //while1
-  {
-      if((posX[ind]==0)&&(posY[ind]==0))
-	  {//if1
-		//no hace nada, hueco
-      }//if1
-      else
-	  {//else1
-          BuscaPatron(ind,indaux,lon1,vr1a,vr1b);//busca primer subpatron
-          if((lon1>lon_sp1i)&&(lon1<lon_sp1s)){//if1
-              p1ini=ind;
-              p1fin=indaux;
-              ind2=indaux+4;
-              while((ind2<(pfin-1))&&(!ok)){//while2
-                  if((posX[ind2]==0)&&(posY[ind2]==0)){//if2
-                      //no hace nada, hueco
-
-                    }//if2
-                  else{//else2
-                      BuscaPatron(ind2,indaux,lon2,vr2a,vr2b);//busca el segundo subpatron
-                      if((lon2>lon_sp2i)&&(lon2<lon_sp2s)){//if2
-                          //si la distancia del sugundo subpatron es correcta compruebo que la
-                          //distancia entre los dos subpatrones tambien es correcta
-
-                          lonaux1=sqrt(((posX[ind2]-posX[p1fin])*(posX[ind2]-posX[p1fin]))+((posY[ind2]-posY[p1fin])*(posY[ind2]-posY[p1fin])));
-                          if((lonaux1<lon_aux1s)&&(lonaux1>lon_aux1i)){//if3
-                              //la distancia entre huecos tambien es valida, podemos continuar
-                              //buscando el tercer subpatron
-                              p2ini=ind2;
-                              p2fin=indaux;
-                              ind3=indaux+4;
-                              while((ind3<(pfin-1))&&(!ok)){//while3
-                                  if((posX[ind3]==0)&&(posY[ind3]==0)){//if4
-                                      //no hace nada, hueco
-
-                                    }//if4
-                                  else{
-                                      BuscaPatron(ind3,indaux,lon3,vr3a,vr3b);//buscamos subpatron3
-                                      if((lon3>lon_sp3i)&&(lon3<lon_sp3s)){//if5
-                                          //es correcto, vemos si la distancia con respecto al subpatron2 es correcta
-
-
-                                          lonaux2=sqrt(((posX[ind3]-posX[p2fin])*(posX[ind3]-posX[p2fin]))+((posY[ind3]-posY[p2fin])*(posY[ind3]-posY[p2fin])));
-                                          if((lonaux2>lon_aux1i)&&(lonaux2<lon_aux1s)){
-                                              //comprobamos si todos los subpatrones proporcionan una linea recta
-                                              p3ini=ind3;
-                                              p3fin=indaux;
-                                              ComprobacionFinal();
-                                              puntosp1=p1fin-p1ini+1;
-                                              puntosp2=p2fin-p2ini+1;
-                                              puntosp3=p3fin-p3ini+1;
-
-
-                                              if(ok){
-                                                  //comprobar_pendientes_rectas(vr1b,vr2b,vr3b);
-                                                  if(patronverdadero)
-												  {
-                                                      comprobar_patron_verdadero(p1ini,p3fin);
-                                                  }
-                                              }
-                                          }
-
-                                        }//if5
-                                    }
-                                  ind3++;
-                                }//while3
-                            }//if3
-                        }//if2
-                    }//else2
-                  ind2++;
-                }//while2
-            }//if1
-
-        }//else1
-      ind++;
-
-    };//while1
-
+            }//if-first pattern found
+        }// end if correct point
+		ind++;
+    };// end-while 1st pattern not_found
 }
 
 
+//----------------------------
+// Main Loop Iterate
+//---------------------------
 bool CDockingApp::Iterate()
 {
-	//Initialization  
+	//Initialization 
+	pattern_found = false;
+
 	float angf1 = 0;
 	float angf2 = 0;
-	float dispatron = 0;  
-	ok = false;
+	float dispatron = 0;	
 	p1ini = 0;
 	p1fin = 0;
 	p2ini = 0;
@@ -936,40 +944,37 @@ bool CDockingApp::Iterate()
 	//Is module active?
 	if( go_docking )
 	{
-		// 1- Get Laser readings
-		//----------------------
+		// 1- Get Laser scan, and transform to array of points with X,Y coordinates in cm 
+		//---------------------------------------------------------------------------------
 		Obtener_puntos_plano();
 
-		// 2- Search pattern
-		//---------------------
+		// 2- Search for pattern in the scan
+		//------------------------------------
 		// Was the pattern found in the previous scan? 
-		//If so, reduce the search range to improve computation speed
-		if(ok_anterior)
+		//If so, reduce the search range to improve computation speed (only for laser with high resolution)
+		if( found_in_previous_iteration && (TAM>1000) )
 		{
-			if((punto_inicio>100)&&(punto_fin<(TAM-100)))			
+			if( (punto_inicio>100)&&(punto_fin<(TAM-100)) )
 				Buscar_Patron_Completo(punto_inicio-100,punto_fin+100);
+			else if( punto_inicio>100 )
+				Buscar_Patron_Completo(punto_inicio-100,TAM);				
 			else
-			{
-				if(punto_inicio>100)
-					Buscar_Patron_Completo(punto_inicio-100,TAM);				
-				else
-					Buscar_Patron_Completo(0,punto_fin+100);
-			}
+				Buscar_Patron_Completo(0,punto_fin+100);			
 		}
 		else
-		{ //No luck- Search the pattern within all the Laser scan
+		{ //No luck- Search the pattern within all the Laser points
 			Buscar_Patron_Completo(0,TAM);
 		}
 
 		
 		// 3- Check if pattern has been found
 		//-------------------------------------
-		if(ok)
+		if( pattern_found )
 		{
 			encontrados++;					//increase the number of consecutive matches
 			contador_no_encontrados = 0.0;	//rested non-matches
 
-			if(encontrados==1.0)			//first time the pattern has been found!
+			if( encontrados==1.0 )			//first time the pattern has been found!
 			{
 				//Save the angles and distance of the match for future matches.
 				angf1 = p1ini*angulo_giro_hok;
@@ -978,30 +983,32 @@ bool CDockingApp::Iterate()
 				angulovi = angf1;
 				angulovf = angf2;
 				disv = dispatron;
-				printf("[AutoDocking_Laser] FIRST TIME - pattern found at angles (%.2f %.2f) at %.2f cm\n",angf1,angf2,dispatron);
+				printf("[AutoDocking_Laser] FIRST TIME - pattern found\n");
 			}
 			else
 			{
 				//Check that the found pattern complies with previous matches!
 				comprobar_patron_verdadero(p1ini,p3fin);
-				if(ok)
+				if( pattern_found )
 				{
-					printf("[AutoDocking_Laser] Pattern found at angles (%.2f %.2f) at %.2f cm\n",angulovi,angulovf,disv);
+					printf("[AutoDocking_Laser] Pattern found [%.1f] times. \n",encontrados);
 					contador_no_encontrados = 0.0;
 					if (encontrados == 4.0)
 						patronverdadero = true;		//we can start moving the robot!
 				}
 				else
 				{					
-					printf("[AutoDocking_Laser] ERROR: There was a problem with the found pattern. Restarting!\n");
+					printf("[AutoDocking_Laser] ERROR: Restarting!\n");
 					encontrados = 0.0;			//reset consecutive matches
 					contador_no_encontrados++;
 				}
 			}
 			
+
 			// 4- Move robot
 			//---------------
-			if(patronverdadero)		//only after 4 consecutive matches, we declare the pattern as the correct one (patronverdadero)
+			//only after 4 consecutive matches, we declare the pattern as the correct one (patronverdadero)
+			if( patronverdadero )
 				MoverRobot();
 			
 			// 5- Debug window?
@@ -1025,7 +1032,8 @@ bool CDockingApp::Iterate()
 		{	//Pattern NOT-found!
 			encontrados = 0;			//reset consecutive matches
 			contador_no_encontrados++;	//increase consecutive non-matches
-			printf("[AutoDocking_Laser]: ERROR [%.1f] Pattern not found within the lasser scan. Retrying.\n", contador_no_encontrados);
+			printf(".");
+			//printf("[AutoDocking_Laser]: ERROR [%.1f] Pattern not found.\n", contador_no_encontrados);
 			m_Comms.Notify("MOTION_CMD_V",0.0);
 			m_Comms.Notify("MOTION_CMD_W",0.0);
 			patronverdadero = false;
@@ -1044,8 +1052,9 @@ bool CDockingApp::Iterate()
 		}
 		else if(contador_no_encontrados>2000)
 		{
-			cout<< "****NO SE ENCUENTRA EL PATRON POR NINGUN SITIO. Cancelando AutoDocking request****" << endl;
+			cout<< "**** PATTERN NOT FOUND ****" << endl;
 			m_Comms.Notify("PARKING",0.0);
+			go_docking = false;
 		}	
 	}// end if(go_docking)
 
@@ -1062,9 +1071,8 @@ bool CDockingApp::OnConnectToServer()
 
 bool CDockingApp::DoRegistrations()
 {
-  //! @moos_subscribe LASER1
-  //! @moos_var LASER1 the scan lassers of a laser rangefinder on the front of the robot
-  AddMOOSVariable("LASER1","LASER1","LASER1",0);
+  //! @moos_subscribe param_laserVar  
+  AddMOOSVariable(laserVar,laserVar,laserVar,0);
  
   //! @moos_subscribe MOTION_CMD_V 
   //! @moos_var MOTION_CMD_V The current robot linear velocity  
@@ -1097,14 +1105,12 @@ bool CDockingApp::DoRegistrations()
 
 bool CDockingApp::OnNewMail(MOOSMSG_LIST &NewMail)
 {
-  //cga:Standard for OpenMore modules
-  //cga:This function will close the module when the "SHUTDOWN" message is received
-
 	std::string cad;	
 	for (MOOSMSG_LIST::const_iterator it=NewMail.begin();it!=NewMail.end();++it)
 	{
 		const CMOOSMsg &m = *it;
 
+		// charging?
 		if( MOOSStrCmp(m.GetKey(),"BATTERY_IS_CHARGING") || MOOSStrCmp(m.GetKey(),"BATTERY_MANAGER_IS_CHARGING") )
 		{
 			//Update charging status
@@ -1122,9 +1128,9 @@ bool CDockingApp::OnNewMail(MOOSMSG_LIST &NewMail)
 				//Cancel Autodocking request
 				m_Comms.Notify("PARKING",0.0);
 				
-				//-------------------------
-				// Set initial state
-				//-------------------------
+				//------------------------------------
+				// Reset the system to initial state
+				//------------------------------------
 				f2activada = false;				//Init the sistem as Far from docking!  
 				contador_no_encontrados = 0;
 				encontrados = 0;
@@ -1132,19 +1138,18 @@ bool CDockingApp::OnNewMail(MOOSMSG_LIST &NewMail)
 				angulovi = 0;
 				angulovf = 0;
 				disv = 0;  
-				ok_anterior = false;
+				found_in_previous_iteration = false;
 				punto_inicio = 0;
 				punto_fin = 0;
 				contfases2 = 0;				
 			}
 		}
 		
+
+		// Start!
 		if( MOOSStrCmp(m.GetKey(),"PARKING") )
-		{
-			//Update PARKING status
-			park = m.GetDouble();
-			
-			if (park==1.0)
+		{	
+			if( m.GetDouble()==1.0 )
 			{
 				if(charge==0.0)
 				{
@@ -1154,8 +1159,7 @@ bool CDockingApp::OnNewMail(MOOSMSG_LIST &NewMail)
 				else
 				{
 					printf("[CAutoDocking_Laser] Requested Autodocking process, but ALREADY CHARGING! Disabling request.\n");
-					park = 0.0;
-					//m_Comms.Notify("PARKING",0.0);
+					m_Comms.Notify("PARKING",0.0);
 				}
 			}
 			else
@@ -1165,6 +1169,8 @@ bool CDockingApp::OnNewMail(MOOSMSG_LIST &NewMail)
 			}
 		}
 
+
+		//Close module
 		if( (MOOSStrCmp(m.GetKey(),"SHUTDOWN")) && (MOOSStrCmp(m.GetString(),"true")) )
 		{
 			// Disconnect comms:
@@ -1176,4 +1182,60 @@ bool CDockingApp::OnNewMail(MOOSMSG_LIST &NewMail)
 
   UpdateMOOSVariables(NewMail);
   return true;
+}
+
+
+//------------------------
+// NOT USED !!
+//------------------------
+void CDockingApp::comprobar_pendientes_rectas(float r1b,float r2b,float r3b){
+
+  float auxiliar;
+  float limite=5;
+
+  auxiliar=r1b-r2b;
+  if(auxiliar<0){
+      auxiliar=auxiliar*(-1);
+    }
+  if(auxiliar>limite){
+      pattern_found=false;
+    }
+  auxiliar=r2b-r3b;
+  if(auxiliar<0){
+      auxiliar=auxiliar*(-1);
+    }
+  if(auxiliar>limite){
+      pattern_found=false;
+    }
+  auxiliar=r1b-r3b;
+  if(auxiliar<0){
+      auxiliar=auxiliar*(-1);
+    }
+  if(auxiliar>limite){
+      pattern_found=false;
+    }
+
+  auxiliar=valorbfinal-r1b;
+  if(auxiliar<0){
+      auxiliar=auxiliar*(-1);
+    }
+  if(auxiliar>limite){
+      pattern_found=false;
+    }
+
+  auxiliar=valorbfinal-r2b;
+  if(auxiliar<0){
+      auxiliar=auxiliar*(-1);
+    }
+  if(auxiliar>limite){
+      pattern_found=false;
+    }
+
+  auxiliar=valorbfinal-r3b;
+  if(auxiliar<0){
+      auxiliar=auxiliar*(-1);
+    }
+  if(auxiliar>limite){
+      pattern_found=false;
+    }
 }

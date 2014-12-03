@@ -450,7 +450,7 @@ bool CAutoDockingCamera::Iterate()
 
 			// Goal Achieved!
 			// Stop robot and deactivate the module
-			m_Comms.Notify("CANCEL_NAVIGATION", 1.0);
+			m_Comms.Notify("CANCEL_NAVIGATION", "AutoDockingLaser - Goal achieved");
 			module_active = false;
 		}
 		else
