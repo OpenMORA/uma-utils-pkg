@@ -37,7 +37,7 @@
 	    MQTT Topic						<->          OpenMORA variable
   --------------------------------------------------------------
  
-  Robot_Name/ClientACK								-->PILOT_MQTT_ACK
+  Robot_Name/ClientACK								-->CLIENT_MQTT_ACK
 
   Robot_Name/TopologyCommand
 			  -GetTopology							--> (Send Variable GRAPH in Topic Topology)
@@ -309,7 +309,7 @@ bool CMQTTMosquitto::Iterate()
 				//Cancel motion
 				is_motion_command_set = false;
 				//! @moos_publish CANCEL_NAVIGATION Cancel the current navigation and return control to client (Pilot)				
-				m_Comms.Notify("CANCEL_NAVIGATION", 1.0);
+				m_Comms.Notify("CANCEL_NAVIGATION", "MQTT - CommandSet delayed");
 			}
 		}
 
@@ -749,7 +749,7 @@ void CMQTTMosquitto::on_message(const mosquitto_message *message)
 		{
 			cout << "[MQTTMosquitto]: STOP ALL!!" << endl;
 			//! @moos_publish CANCEL_NAVIGATION Cancel the current navigation and return control to client (Manual Mode)			
-			m_Comms.Notify("CANCEL_NAVIGATION", 1.0);
+			m_Comms.Notify("CANCEL_NAVIGATION", "MQTT - User sent STOP");
 		}
 
 		// GoToPoint x y
@@ -921,8 +921,10 @@ void CMQTTMosquitto::on_message(const mosquitto_message *message)
 	// ClientACK
 	else if(!strcmp(message->topic, (broker_username + "/" +"ClientACK").c_str() ))
 	{
-		//! @moos_publish PILOT_MQTT_ACK Flag to indicate that communication with client is alive.
-		m_Comms.Notify("PILOT_MQTT_ACK","1");
+		string ClientName = string(aux);
+
+		//! @moos_publish CLIENT_MQTT_ACK Flag to indicate that communication with client is alive.
+		m_Comms.Notify("CLIENT_MQTT_ACK",ClientName.c_str());
 
 		//Echo ACK to the user
 		on_publish(NULL, (broker_username + "/" + "RobotACK").c_str(),5,"alive");
