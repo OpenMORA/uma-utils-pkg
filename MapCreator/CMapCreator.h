@@ -30,6 +30,7 @@
 #define CMapCreator_H
 
 #include <COpenMORAMOOSApp.h>
+#include <mrpt/slam/CMetricMapBuilderICP.h>
 #include <sstream>
 #include <iomanip>
 #include <iostream>
@@ -53,12 +54,13 @@ protected:
 
 	bool OnCommandMsg( CMOOSMsg Msg );
 	bool DoRegistrations();
-
+	void SaveAsImage(mrpt::slam::CMetricMapBuilderICP* mapBuilder_p, mrpt::slam::CSimpleMap theMap, const float gridRes, std::string prefix);
 
 	// Local 
 	void MapBuilding_ICP(const std::string &INI_FILENAME, const std::string &override_rawlog_file);
 
 	std::string INI_FILENAME;					//path to the configuration file for the ICP-based SLAM
 	std::string rawlog_file;					//path to the rawlog file to process
+	std::string output_path;
 };
 #endif

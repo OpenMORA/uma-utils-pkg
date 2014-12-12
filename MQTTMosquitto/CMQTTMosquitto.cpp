@@ -300,6 +300,7 @@ bool CMQTTMosquitto::Iterate()
 
 		//If a motion command (V,W) is active, check timeout
 		//--------------------------------------------------
+		
 		if (is_motion_command_set)
 		{
 			//compute time difference from last motion command
@@ -312,7 +313,7 @@ bool CMQTTMosquitto::Iterate()
 				m_Comms.Notify("CANCEL_NAVIGATION", "MQTT - CommandSet delayed");
 			}
 		}
-
+		
 
 		// Send robot STATUS
 		//-------------------		

@@ -77,6 +77,9 @@ bool CMapCreator::OnStartUp()
 	rawlog_file	=       m_ini.read_string("","rawlog_file","",false);
 	ASSERT_FILE_EXISTS_(rawlog_file)
 
+	//! @moos_param   output_path   (optional) Path to the directory where the output map will be created.
+	output_path	=       m_ini.read_string("","output_path","",false);
+
 	cout << "[MapCreator]: Parameters configuration Done " << endl;
 	return DoRegistrations();
 }
@@ -209,7 +212,10 @@ void CMapCreator::MapBuilding_ICP(const string &INI_FILENAME, const string &over
 	MRPT_LOAD_CONFIG_VAR( SHOW_LASER_SCANS_3D , bool,  iniFile, "MappingApplication");
 	MRPT_LOAD_CONFIG_VAR( SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS, int, iniFile, "MappingApplication");
 
-	const char* OUT_DIR = OUT_DIR_STD.c_str();
+	//output directory
+	std::string OD = format( "%s\\%s",output_path.c_str(),OUT_DIR_STD.c_str() );
+	cout << OD << endl;
+	const char* OUT_DIR = OD.c_str();
 
 	// ------------------------------------
 	//		Constructor of ICP-SLAM object
@@ -284,7 +290,7 @@ void CMapCreator::MapBuilding_ICP(const string &INI_FILENAME, const string &over
 #endif
 
 	// ----------------------------------------------------------
-	//						Map Building
+	//						Map Building - LOOP
 	// ----------------------------------------------------------
 	CPose2D					odoPose(0,0,0);
 
@@ -477,8 +483,22 @@ void CMapCreator::MapBuilding_ICP(const string &INI_FILENAME, const string &over
 				// Save as file:
 				if (0==(step % LOG_FREQUENCY) && SAVE_3D_SCENE)
 				{
-					CFileGZOutputStream	f( format( "%s/buildingmap_%05u.3Dscene",OUT_DIR,step ));
+					// As 3D scene
+					CFileGZOutputStream	f( format("%s/buildingmap_%05u.3Dscene",OUT_DIR,step) );
 					f << *scene;
+					
+					//Save MetricMap
+					try
+					{
+						CMultiMetricMap  *TempMetricMap = mapBuilder.getCurrentlyBuiltMetricMap();
+						str = format("%s/%05u_MetricMap_",OUT_DIR,step);
+						printf("Dumping metric maps to %s_XXX\n", str.c_str() );
+						TempMetricMap->saveMetricMapRepresentationToFile( str );
+					}
+					catch( exception e)
+					{
+						cout << "Exception saving MetricMap" << e.what() << endl;
+					}
 				}
 
 				// Show 3D?
@@ -497,7 +517,9 @@ void CMapCreator::MapBuilding_ICP(const string &INI_FILENAME, const string &over
 
 					sleep( SHOW_PROGRESS_3D_REAL_TIME_DELAY_MS );
 				}
-			}
+
+				
+			}//end-save3DScene
 
 
 			// Save the memory usage:
@@ -530,24 +552,45 @@ void CMapCreator::MapBuilding_ICP(const string &INI_FILENAME, const string &over
 		printf("\n---------------- STEP %u | RAWLOG ENTRY %u ----------------\n",step, (unsigned)rawlogEntry);
 	};
 
+
+	//*************************************************************************************************
 	printf("\n---------------- END!! (total time: %.03f sec) ----------------\n",tictacGlobal.Tac());
+	//*************************************************************************************************
 
 	// Save map:
 	mapBuilder.getCurrentlyBuiltMap(finalMap);
 
-	str = format("%s/_finalmap_.simplemap",OUT_DIR);
-	printf("Dumping final map in binary format to: %s\n", str.c_str() );
-	mapBuilder.saveCurrentMapToFile(str);
+	// As SimpleMap
+		str = format("%s/_finalmap_.simplemap",OUT_DIR);
+		printf("Dumping final map in binary format to: %s\n", str.c_str() );
+		mapBuilder.saveCurrentMapToFile(str);
+	//As txt,png,limits,etc
+		CMultiMetricMap  *finalPointsMap = mapBuilder.getCurrentlyBuiltMetricMap();
+		str = format("%s/_finalmaps_.txt",OUT_DIR);
+		printf("Dumping final metric maps to %s_XXX\n", str.c_str() );
+		finalPointsMap->saveMetricMapRepresentationToFile( str );
 
-	CMultiMetricMap  *finalPointsMap = mapBuilder.getCurrentlyBuiltMetricMap();
-	str = format("%s/_finalmaps_.txt",OUT_DIR);
-	printf("Dumping final metric maps to %s_XXX\n", str.c_str() );
-	finalPointsMap->saveMetricMapRepresentationToFile( str );
+	//As Image from pointsMap
+		SaveAsImage(&mapBuilder,finalMap,grid_resolution,"final");	
+	
+	if (win3D)
+		win3D->waitForKey();
 
-	//As Image
+	MRPT_END
+
+	printf("Clearing current rawlog file. Waiting for new rawlog.\n" );
+	rawlog_file = "";
+}
+
+
+//-----------------------------
+// Save current map as Image
+//-----------------------------
+void CMapCreator::SaveAsImage(CMetricMapBuilderICP* mapBuilder_p, mrpt::slam::CSimpleMap theMap, const float gridRes, std::string prefix)
+{	
 	vector<float> x,y;
 	float xmin=100,xmax=-100,ymin=100,ymax=-100;
-	mapBuilder.getCurrentMapPoints(x,y);
+	mapBuilder_p ->getCurrentMapPoints(x,y);
 	for (unsigned int i=0; i<x.size(); i++)
 	{
 		if (x[i] < xmin)
@@ -560,15 +603,7 @@ void CMapCreator::MapBuilding_ICP(const string &INI_FILENAME, const string &over
 			ymax = y[i];
 	}
 	
-	slam::COccupancyGridMap2D grid(xmin, xmax, ymin, ymax, grid_resolution);
-	grid.loadFromSimpleMap(finalMap);
-	grid.saveAsBitmapFile("geometricMap.bmp");
-	
-	if (win3D)
-		win3D->waitForKey();
-
-	MRPT_END
-
-	printf("Clearing current rawlog file. Waiting for new rawlog.\n" );
-	rawlog_file = "";
+	mrpt::slam::COccupancyGridMap2D grid(xmin, xmax, ymin, ymax, gridRes);
+	grid.loadFromSimpleMap(theMap);
+	grid.saveAsBitmapFile( format("%s_geometricMap.bmp",prefix.c_str()) );
 }
