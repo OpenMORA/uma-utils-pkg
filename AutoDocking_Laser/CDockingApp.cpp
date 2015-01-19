@@ -38,14 +38,14 @@
 #include <iomanip>
 #include <iostream>
 #include <math.h>
-#include <mrpt/slam/CSimplePointsMap.h>
+#include <mrpt/maps/CSimplePointsMap.h>
 #include <mrpt/gui.h>
 
 using namespace std;
-
 using namespace mrpt;
-using namespace mrpt::slam;
+using namespace mrpt::obs;
 using namespace mrpt::gui;
+using namespace mrpt::utils;
 
 
 
@@ -159,7 +159,7 @@ bool CDockingApp::OnStartUp()
 //---------------------------------------------------------------------
 void CDockingApp::dibujar_puntos(int p1i,int p1f,int p2i,int p2f,int p3i,int p3f)
 {
-	mrpt::slam::CSimplePointsMap TheMap,TheMap1,TheMap2,TheMap3;
+	mrpt::maps::CSimplePointsMap TheMap,TheMap1,TheMap2,TheMap3;
 	int i;
 	mrpt::math::CVectorFloat xs,ys,zs,xs1,ys1,zs1;
 

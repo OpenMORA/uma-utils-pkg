@@ -29,12 +29,11 @@
 #ifndef CDockingApp_H
 #define CDockingApp_H
 
-//#include <MOOS/libMOOS/App/MOOSApp.h>
 #include <COpenMORAMOOSApp.h>
 #include <mrpt/gui/CDisplayWindowPlots.h>
-#include <mrpt/slam/CObservation2DRangeScan.h>
+#include <mrpt/obs/CObservation2DRangeScan.h>
 #include <math.h>
-// Any other includes..
+
 
 class CDockingApp : public COpenMORAApp
 {
@@ -79,7 +78,7 @@ protected:
 	// DATA. Your local variables here...
 
 	
-	mrpt::slam::CObservation2DRangeScanPtr obs;			//The laser scans
+	mrpt::obs::CObservation2DRangeScanPtr obs;			//The laser scans
 	const static unsigned int TAMMAXIMO=1300;
     float posX[TAMMAXIMO];								//X coordinates of the obstacles in the scan (cm)
     float posY[TAMMAXIMO];								//Y coordinates of the obstacles in the scan (cm)

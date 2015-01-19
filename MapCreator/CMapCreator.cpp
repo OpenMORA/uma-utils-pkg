@@ -38,8 +38,8 @@
 #include <mrpt/utils/CFileGZInputStream.h>
 #include <mrpt/system/threads.h>
 #include <mrpt/slam/CMetricMapBuilderICP.h>
-#include <mrpt/slam/CRawlog.h>
-#include <mrpt/slam/CObservationOdometry.h>
+#include <mrpt/obs/CRawlog.h>
+#include <mrpt/obs/CObservationOdometry.h>
 #include <mrpt/opengl.h>
 #include <mrpt/opengl/CPlanarLaserScan.h>  // This class lives in the lib [mrpt-maps] and must be included by hand
 #include <mrpt/gui.h>
@@ -51,6 +51,9 @@ using namespace mrpt::gui;
 using namespace mrpt::system;
 using namespace mrpt::math;
 using namespace mrpt::utils;
+using namespace mrpt::maps;
+using namespace mrpt::poses;
+using namespace mrpt::obs;
 using namespace std;
 
 // Constructor
@@ -297,7 +300,7 @@ void CMapCreator::MapBuilding_ICP(const string &INI_FILENAME, const string &over
 	tictacGlobal.Tic();
 	for (;;)
 	{
-		CActionCollectionPtr	action;
+		mrpt::obs::CActionCollectionPtr	action;
 		CSensoryFramePtr		observations;
 		CObservationPtr			observation;
 
@@ -314,7 +317,7 @@ void CMapCreator::MapBuilding_ICP(const string &INI_FILENAME, const string &over
 			break; // file EOF
 
 		const bool isObsBasedRawlog = observation.present();
-		std::vector<mrpt::slam::CObservation2DRangeScanPtr> lst_current_laser_scans;   // Just for drawing in 3D views
+		std::vector<mrpt::obs::CObservation2DRangeScanPtr> lst_current_laser_scans;   // Just for drawing in 3D views
 
 		if (rawlogEntry>=rawlog_offset)
 		{
@@ -586,7 +589,7 @@ void CMapCreator::MapBuilding_ICP(const string &INI_FILENAME, const string &over
 //-----------------------------
 // Save current map as Image
 //-----------------------------
-void CMapCreator::SaveAsImage(CMetricMapBuilderICP* mapBuilder_p, mrpt::slam::CSimpleMap theMap, const float gridRes, std::string prefix)
+void CMapCreator::SaveAsImage(CMetricMapBuilderICP* mapBuilder_p, mrpt::maps::CSimpleMap theMap, const float gridRes, std::string prefix)
 {	
 	vector<float> x,y;
 	float xmin=100,xmax=-100,ymin=100,ymax=-100;
@@ -603,7 +606,7 @@ void CMapCreator::SaveAsImage(CMetricMapBuilderICP* mapBuilder_p, mrpt::slam::CS
 			ymax = y[i];
 	}
 	
-	mrpt::slam::COccupancyGridMap2D grid(xmin, xmax, ymin, ymax, gridRes);
+	mrpt::maps::COccupancyGridMap2D grid(xmin, xmax, ymin, ymax, gridRes);
 	grid.loadFromSimpleMap(theMap);
 	grid.saveAsBitmapFile( format("%s_geometricMap.bmp",prefix.c_str()) );
 }

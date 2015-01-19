@@ -92,12 +92,13 @@
 #include <sstream>
 #include <iomanip>
 #include <iostream>
-#include <mrpt/slam/CObservation2DRangeScan.h>
+#include <mrpt/obs/CObservation2DRangeScan.h>
 
 using namespace std;
 using namespace mosqpp;
 using namespace mrpt;
 using namespace mrpt::utils;
+using namespace mrpt::obs;
 
 CMQTTMosquitto::CMQTTMosquitto(): mosquittopp( ("Giraff_"+mrpt::system::dateTimeToString(mrpt::system::now())).c_str() ,false)
 {	

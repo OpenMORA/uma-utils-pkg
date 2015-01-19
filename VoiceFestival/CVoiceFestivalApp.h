@@ -30,7 +30,7 @@
 #define CVoiceFestivalApp_H
 
 #include <COpenMORAMOOSApp.h>
-#include <mrpt/base.h>
+//#include <mrpt/base.h>
 
 class CVoiceFestivalApp : public COpenMORAApp
 {

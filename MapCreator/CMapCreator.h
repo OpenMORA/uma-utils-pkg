@@ -54,7 +54,7 @@ protected:
 
 	bool OnCommandMsg( CMOOSMsg Msg );
 	bool DoRegistrations();
-	void SaveAsImage(mrpt::slam::CMetricMapBuilderICP* mapBuilder_p, mrpt::slam::CSimpleMap theMap, const float gridRes, std::string prefix);
+	void SaveAsImage(mrpt::slam::CMetricMapBuilderICP* mapBuilder_p, mrpt::maps::CSimpleMap theMap, const float gridRes, std::string prefix);
 
 	// Local 
 	void MapBuilding_ICP(const std::string &INI_FILENAME, const std::string &override_rawlog_file);

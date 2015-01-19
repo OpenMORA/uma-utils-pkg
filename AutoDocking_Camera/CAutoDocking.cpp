@@ -36,18 +36,19 @@
 
 #include <mrpt/gui.h>
 #include <mrpt/system.h>
-#include <mrpt/slam/CObservationImage.h>
-#include <opencv2/core/core.hpp>
+#include <mrpt/obs/CObservationImage.h>
+#include <mrpt/obs/CObservationOdometry.h>
 #include <mrpt/poses/CPoint2D.h>
-#include <mrpt/slam/CObservationOdometry.h>
 #include <mrpt/utils/utils_defs.h>
+#include <opencv2/core/core.hpp>
 
 using namespace std;
 using namespace cv;
 using namespace mrpt;
 using namespace mrpt::system;
 using namespace mrpt::utils;
-using namespace mrpt::slam;
+using namespace mrpt::obs;
+using namespace mrpt::poses;
 //using namespace mrpt::hwdrivers;
 
 
@@ -184,7 +185,7 @@ bool CAutoDockingCamera::get_new_image(cv::Mat &frame)
 	else if( input_image_method == "openMORA" )
 	{
 		//Read a new image using the OpenMORA variables
-		mrpt::slam::CObservationImagePtr image_obs;
+		mrpt::obs::CObservationImagePtr image_obs;
 		CMOOSVariable *pVar;
 
 		pVar = GetMOOSVar("CAMERA_H");
@@ -210,7 +211,7 @@ bool CAutoDockingCamera::get_new_image(cv::Mat &frame)
 			
 			if( IS_CLASS(obj, CObservationImage) )
 			{
-				image_obs = mrpt::slam::CObservationImagePtr(obj);				
+				image_obs = mrpt::obs::CObservationImagePtr(obj);				
 				frame = image_obs->image.getAs<IplImage>();
 				return true;				
 			}
@@ -234,6 +235,8 @@ bool CAutoDockingCamera::get_new_image(cv::Mat &frame)
 		//To be done, read image from socket.
 		return false;
 	}
+	else
+		return false;
 }
 //-----------------------------------------------------------
 // 						   Init
@@ -529,7 +532,7 @@ bool CAutoDockingCamera::OnNewMail(MOOSMSG_LIST &NewMail)
 			
 			if( IS_CLASS(obj, CObservationImage) )
 			{
-				mrpt::slam::CObservationImagePtr image_obs = mrpt::slam::CObservationImagePtr(obj);
+				mrpt::obs::CObservationImagePtr image_obs = mrpt::obs::CObservationImagePtr(obj);
 				last_image_obs = image_obs->image.getAs<IplImage>();
 				
 				if( !last_image_obs.empty() )
@@ -1706,8 +1709,7 @@ void CAutoDockingCamera::updateLastMovement( const TLast_movement_command &movem
 		// the pattern, the m_turn_complete_tester variable must be reset
 
 		// We need to declare this varbiales here, a switch problem ¬¬
-		CPose2D currPose;
-		TTimeStamp time;
+		CPose2D currPose;		
 		CMOOSVariable * pVar;
 
 		switch ( movement )
@@ -1738,7 +1740,7 @@ void CAutoDockingCamera::updateLastMovement( const TLast_movement_command &movem
 					
 					if( IS_CLASS(obj, CObservationOdometry) )
 					{
-						mrpt::slam::CObservationOdometryPtr odo_obs = mrpt::slam::CObservationOdometryPtr(obj);
+						mrpt::obs::CObservationOdometryPtr odo_obs = mrpt::obs::CObservationOdometryPtr(obj);
 						currPose = odo_obs->odometry;
 
 						mrpt::math::CVectorDouble v_pose;
@@ -1941,8 +1943,7 @@ void CAutoDockingCamera::changeMode( const TMode &new_mode )
 	try
 	{
 		double angleFarMode = m_angleFarMode; // 0.71273;
-		double angleNearMode = m_angleNearMode; //0.4;
-		double currTilt;
+		double angleNearMode = m_angleNearMode; //0.4;		
 		CMOOSVariable * pVar;
 
 		switch( new_mode )

@@ -41,14 +41,12 @@
 #include "CWifiAlert.h"
 #include <string.h>
 #include <fstream>
-#include <mrpt/system.h>
-#include <mrpt/slam.h>
 #include <sstream>
-
+#include <mrpt/obs/CObservationWirelessPower.h>
 
 using namespace mrpt;
-using namespace mrpt::slam;
 using namespace mrpt::utils;
+using namespace mrpt::obs;
 
 WifiAlert::WifiAlert()
 {
@@ -263,7 +261,7 @@ bool WifiAlert::OnNewMail(MOOSMSG_LIST &NewMail)
 						
 						//Set target to navigate for a better wifi signal
 						//!  @moos_publish <NAVIGATE_TARGET> Reactive target position to navigate in the form [x y]
-						m_Comms.Notify("NAVIGATE_TARGET", mrpt::utils::format("[%.03f %.03f]", x,  y) );
+						m_Comms.Notify("NAVIGATE_TARGET", mrpt::format("[%.03f %.03f]", x,  y) );
 					}
 				} else {
 					// The robot was moving back, but it is already in a zone with good strength

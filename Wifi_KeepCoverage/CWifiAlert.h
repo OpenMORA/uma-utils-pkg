@@ -33,8 +33,7 @@
 #include <COpenMORAMOOSApp.h>
 #include <mrpt/poses/CPose3D.h>
 #include <vector>
-#include <mrpt/base.h>
-#include <mrpt/slam/CObservationWirelessPower.h>
+#include <mrpt/obs/CObservationWirelessPower.h>
 
 //#define M_RECV "SKYPE_RECV"
 //#define M_SEND "SKYPE_SEND"
