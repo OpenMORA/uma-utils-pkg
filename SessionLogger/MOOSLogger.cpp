@@ -348,8 +348,25 @@ bool CMOOSLogger::OnStartUp()
     //////////////////////////////
     //  now open the log files  //
     //////////////////////////////
-    //if(!OnNewSession())
-    //    return false;
+	bool WaitForUser;
+	m_MissionReader.GetConfigurationParam("WaitForUser", WaitForUser);
+
+	if (!WaitForUser)
+	{
+		//Use the username as the StemfileName to differenciate log files
+		m_sStemFileName = "NO_USER";
+		//Use also the Robot_ID
+		CMOOSVariable * pVar = GetMOOSVar("ROBOT_ID");
+		if (pVar)
+			m_sStemFileName += "#" + pVar->GetStringVal();
+		else
+			m_sStemFileName += "#NO_ROBOT_ID";
+
+		printf("[SessionLogger]: New session starts\n");
+
+		//Start logging right now
+		OnNewSession();
+	}
 
     return true;
 }
@@ -1175,16 +1192,7 @@ bool CMOOSLogger::OnNewSession()
     //and publish it
     m_Comms.Notify("LOGGER_DIRECTORY",m_sLogDirectoryName.c_str());
     
-    //and write this to file
-    /* JGMonroy
-	ofstream LF(m_sSummaryFile.c_str());
-    if(LF.is_open())
-    {
-        LF<<"LastOpenedLoggingDirectory="<<m_sLogDirectoryName<<std::endl;        
-    }
-	*/
-    
-
+   
     m_sAsyncFileName = m_sLogDirectoryName+"/"+m_sLogRootName+".alog";
     m_sExcludeFileName = m_sLogDirectoryName+"/"+m_sLogRootName+".xlog";    
 	m_sSyncFileName = m_sLogDirectoryName+"/"+m_sLogRootName+".slog";
