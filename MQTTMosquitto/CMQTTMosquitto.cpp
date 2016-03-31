@@ -38,6 +38,7 @@
   --------------------------------------------------------------
  
   Robot_Name/ClientACK								-->CLIENT_MQTT_ACK
+  Robot_Name/ServerACK								-->(None, just for checking times)
 
   Robot_Name/TopologyCommand
 			  -GetTopology							--> (Send Variable GRAPH in Topic Topology)
@@ -114,6 +115,9 @@ bool CMQTTMosquitto::OnStartUp()
 
 	// Read Module Parameters
 	//------------------------
+	//! @moos_param ACKRate The rate (Hz) of sendign the ACK msg to the client
+	ACKRate = m_ini.read_float("", "ACKRate", 1.0, false);
+
 	//! @moos_param localizationRate The rate (Hz) of sendign the localization to the Pilot client
 	localizationRate = m_ini.read_float("","localizationRate",10.0,false);
 
@@ -227,7 +231,11 @@ bool CMQTTMosquitto::OnStartUp()
 	//Init timeStamps
 	timeStamp_last_loc = mrpt::system::now();
 	timeStamp_last_laser = mrpt::system::now();
-
+	timestampClientACK = 0;
+	timestampServerACK = 0;
+	timestampRobotACK = mrpt::system::now();
+	//Init counters of ACK
+	counterClientACK, counterServerACK, counterRobotACK = 0;
 	
 	is_motion_command_set = false;		//indicates (true/false) if a motion command is active (To control robot from client)
 	return DoRegistrations();
@@ -306,8 +314,9 @@ bool CMQTTMosquitto::Iterate()
 		{
 			//compute time difference from last motion command
 			double seconds = mrpt::system::timeDifference(time_last_motion_command,mrpt::system::now());
-			if (seconds > 0.2)
+			if (seconds > 0.5)
 			{
+				printf("[MQTT]: Motion command Timed-Out (500ms) - sending CANCEL_NAVIGATION\n ");
 				//Cancel motion
 				is_motion_command_set = false;
 				//! @moos_publish CANCEL_NAVIGATION Cancel the current navigation and return control to client (Pilot)				
@@ -315,6 +324,19 @@ bool CMQTTMosquitto::Iterate()
 			}
 		}
 		
+
+		// Send robotACK
+		//---------------
+		if (mrpt::system::timeDifference(timestampRobotACK, mrpt::system::now()) > (1 / ACKRate))
+		{
+			// robotACK =  "LastClientACK|RobotACK|lastServerACK"
+			// All ACK msgs has the format: "counter timestamp"	
+			timestampRobotACK = mrpt::system::now();
+			std::string message = format("%u %I64u|%u %I64u|%u %I64u", counterClientACK, timestampClientACK, counterRobotACK, timestampRobotACK, counterServerACK, timestampServerACK);
+			
+			on_publish(NULL, (broker_username + "/" + "RobotACK").c_str(), strlen(message.c_str()), message.c_str());
+		}
+
 
 		// Send robot STATUS
 		//-------------------		
@@ -660,12 +682,18 @@ void CMQTTMosquitto::on_message(const mosquitto_message *message)
 	    //    std::cout << ", payload text is " << message->payload << "\n";
 	    //else
 		//	std::cout << ", payload is (null)\n";
-	}	
-		
+	}
+
+	//First value is ALWAYS the message timeStamp: [tt|msg_content]
+	std::string messageCommand = string(aux);
+	size_t pos = messageCommand.find("|");
+	mrpt::system::TTimeStamp messageTimeStamp = std::stoull(messageCommand.substr(0, pos));
+	messageCommand.erase(0, pos + 1);
+
 	// TOPOLOGY-COMMANDS
 	if(!strcmp(message->topic, (broker_username + "/" +"TopologyCommand").c_str() ))
 	{
-		string topologyMessage = string(aux);
+		string topologyMessage = messageCommand;
 
 		//First element is the name of the action to perform in the topology graph
 		size_t pos = topologyMessage.find(" ");
@@ -739,7 +767,7 @@ void CMQTTMosquitto::on_message(const mosquitto_message *message)
 	// NAVIGATION-COMMANDS
 	else if(!strcmp(message->topic, (broker_username + "/" +"NavigationCommand").c_str() ))
 	{
-		string pluginCommand = string(aux);
+		string pluginCommand = messageCommand;
 
 		//First element is the name of the action to perform, then the parameters
 		size_t pos = pluginCommand.find(" ");
@@ -794,12 +822,16 @@ void CMQTTMosquitto::on_message(const mosquitto_message *message)
 		// Motion v w
 		else if(action == "Motion")
 		{
-			//! @moos_publish MOTION_REQUEST v w A request to set the robot linear and angular speeds
-			m_Comms.Notify("MOTION_REQUEST", pluginCommand);
+			//check that motion msg is fresh
+			if (mrpt::system::timeDifference(timestampClientACK,messageTimeStamp)<=0.5)
+			{
+				//! @moos_publish MOTION_REQUEST v w A request to set the robot linear and angular speeds
+				m_Comms.Notify("MOTION_REQUEST", pluginCommand);
 
-			//Get timeStamp
-			time_last_motion_command = mrpt::system::now();
-			is_motion_command_set = true;
+				//Get timeStamp to ensure consecutive motion commands have enough frequency rate
+				time_last_motion_command = mrpt::system::now();
+				is_motion_command_set = true;
+			}
 		}
 
 		// RandomNavigator 0/1
@@ -869,7 +901,7 @@ void CMQTTMosquitto::on_message(const mosquitto_message *message)
 	// MAPBUILDING-COMMANDS
 	else if(!strcmp(message->topic, (broker_username + "/" +"MapBuildingCommand").c_str() ))
 	{
-		string command = string(aux);
+		string command = messageCommand;
 
 		//First element is the name of the action to perform
 		size_t pos = command.find(" ");
@@ -901,7 +933,7 @@ void CMQTTMosquitto::on_message(const mosquitto_message *message)
 	// SESSION-COMMANDS (for SessionLogger module)	
 	else if(!strcmp(message->topic, (broker_username + "/" +"SessionCommand").c_str() ))
 	{
-		string command = string(aux);
+		string command = messageCommand;
 
 		//First element is the name of the action to perform
 		size_t pos = command.find(" ");
@@ -923,19 +955,36 @@ void CMQTTMosquitto::on_message(const mosquitto_message *message)
 	// ClientACK
 	else if(!strcmp(message->topic, (broker_username + "/" +"ClientACK").c_str() ))
 	{
-		string ClientName = string(aux);
-
 		//! @moos_publish CLIENT_MQTT_ACK Flag to indicate that communication with client is alive.
-		m_Comms.Notify("CLIENT_MQTT_ACK",ClientName.c_str());
+		m_Comms.Notify("CLIENT_MQTT_ACK", messageCommand.c_str());
+		
+		// messageCommand = "ClientACK|RobotACK|ServerACK"
+		//All ACK msgs are = "counter timestamp". Extract the Client counter and timestamp		
+		size_t pos = messageCommand.find("|");
+		std::string clientACK = messageCommand.substr(0, pos);
+		//Separate counter from timestamp
+		pos = clientACK.find(" ");
+		counterClientACK = std::atoi(clientACK.substr(0, pos).c_str());
+		timestampClientACK = std::stoull(clientACK.substr(pos + 1));
+	}
 
-		//Echo ACK to the user
-		on_publish(NULL, (broker_username + "/" + "RobotACK").c_str(),5,"alive");
+	// ServerACK
+	else if (!strcmp(message->topic, (broker_username + "/" + "ServerACK").c_str()))
+	{
+		// messageCommand = "ClientACK|RobotACK|ServerACK"
+		//All ACK msgs are = "counter timestamp". Extract the Server counter and timestamp
+		size_t pos = messageCommand.rfind("|");
+		std::string serverACK = messageCommand.substr(pos+1);
+		//Separate counter from timestamp
+		pos = serverACK.find(" ");
+		counterServerACK = std::atoi(serverACK.substr(0, pos).c_str());
+		timestampServerACK = std::stoull(serverACK.substr(pos + 1));
 	}
 
 	// Debug //Debugf
 	else if(!strcmp(message->topic, (broker_username + "/" +"Debug").c_str() ))
 	{
-		string command = string(aux);
+		string command = messageCommand;
 
 		//First element is the name of the Variable to publish
 		size_t pos = command.find(" ");
@@ -945,7 +994,7 @@ void CMQTTMosquitto::on_message(const mosquitto_message *message)
 	}
 	else if(!strcmp(message->topic, (broker_username + "/" +"Debugf").c_str() ))
 	{
-		string command = string(aux);
+		string command = messageCommand;
 
 		//First element is the name of the Variable to publish
 		size_t pos = command.find(" ");
@@ -976,5 +1025,16 @@ void CMQTTMosquitto::on_subscribe(uint16_t mid, int qos_count, const uint8_t *gr
 
 void CMQTTMosquitto::on_publish(int *mid, const char *topic, int payloadlen, const void *payload)
 {
-	int n= publish(mid,topic,payloadlen,payload);	
+	//Append "current_timestamp|" to all published messages, as part of the payload message
+	char * cstr = new char[payloadlen + 1];
+	std::strcpy(cstr, (char*)payload );
+	std::string sLoad = string(cstr);
+	uint64_t tt = (uint64_t)mrpt::system::now() / 10000;	//timestamp in ms
+	std::string myPayload = format("%I64u|", tt) + sLoad;
+
+	//Update vars	
+	payloadlen = strlen(myPayload.c_str());
+
+	//Send message over MQTT
+	int n = publish(mid, topic, payloadlen, myPayload.c_str());
 }

@@ -602,12 +602,12 @@ void CDockingApp::Obtener_puntos_plano()
 	obs->getSensorPose(laser_pose);
 
 	// Is laser rolled?
-	printf( "Laser Roll is: %.3f, diff=%.3f\n",laser_pose.roll(),std::abs(double(std::abs(laser_pose.roll())-PI) ) );
+	//printf( "Laser Roll is: %.3f, diff=%.3f\n",laser_pose.roll(),std::abs(double(std::abs(laser_pose.roll())-PI) ) );
 	if( std::abs(double(std::abs(laser_pose.roll())-PI) ) < 0.01 )
 	{		
 		// Scans ar not from right to left!, but left to right!
 		std::reverse(obs->scan.begin(),obs->scan.end());
-		printf( "REVERSING LASER SCAN" );
+		//printf( "REVERSING LASER SCAN" );
 	}
 
 

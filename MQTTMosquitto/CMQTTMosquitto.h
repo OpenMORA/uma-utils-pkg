@@ -80,6 +80,11 @@ private:
 	std::string TLS_path, TLS_CAfile_pem, TLS_CERTfile_pem, TLS_KEYfile_pem;
 	bool is_motion_command_set;
 	mrpt::system::TTimeStamp time_last_motion_command;
+
+	/** To handle message synchronization*/
+	float ACKRate;
+	mrpt::system::TTimeStamp timestampClientACK, timestampServerACK, timestampRobotACK;
+	int counterClientACK, counterServerACK, counterRobotACK;
 };
 
 #endif
