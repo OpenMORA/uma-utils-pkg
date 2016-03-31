@@ -101,7 +101,8 @@ using namespace mrpt;
 using namespace mrpt::utils;
 using namespace mrpt::obs;
 
-CMQTTMosquitto::CMQTTMosquitto(): mosquittopp( ("Giraff_"+mrpt::system::dateTimeToString(mrpt::system::now())).c_str() ,false)
+//Create a MQTT connection with a clean session (no logs on the broker)
+CMQTTMosquitto::CMQTTMosquitto(): mosquittopp( ("Giraff_"+mrpt::system::dateTimeToString(mrpt::system::now())).c_str() ,true)
 {	
 }
 
