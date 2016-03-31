@@ -668,19 +668,25 @@ void CMQTTMosquitto::on_connect (int rc)
 
 void CMQTTMosquitto::on_message(const mosquitto_message *message)
 {
-	char buf[51];
+	char * cstr = new char[message->payloadlen + 1];
+	std::strcpy(cstr, (char*)message->payload);
+	std::string messageCommand = string(cstr);
+
+		
+	/*char buf[51];
 	memset(buf, 0, 51*sizeof(char));
-    /* Copy N-1 bytes to ensure always 0 terminated. */
+    // Copy N-1 bytes to ensure always 0 terminated.
     memcpy(buf, message->payload, 50*sizeof(char));
 	const char *aux;
 	aux=buf;
+	*/
 
 	// Display incomming msg (except ClientACK)
 	//-----------------------	
 	if( strcmp(message->topic, (broker_username + "/" +"ClientACK").c_str()) )
 	{
 		std::cout << "[MQTTMosquitto]: " << message->topic << " : ";		
-		printf(buf, 50);
+		printf("MSG: %s", messageCommand);
 		printf("\n\n");
 		//if (message->payloadlen)
 	    //    std::cout << ", payload text is " << message->payload << "\n";
@@ -688,11 +694,11 @@ void CMQTTMosquitto::on_message(const mosquitto_message *message)
 		//	std::cout << ", payload is (null)\n";
 	}
 
-	//First value is ALWAYS the message timeStamp: [tt|msg_content]
-	std::string messageCommand = string(aux);
+	//First value is ALWAYS the message timeStamp: [tt|msg_content]	
 	size_t pos = messageCommand.find("|");
 	mrpt::system::TTimeStamp messageTimeStamp = std::stoull(messageCommand.substr(0, pos));
 	messageCommand.erase(0, pos + 1);
+	printf("MSG_noTS = %s\n", messageCommand.c_str());
 
 	// TOPOLOGY-COMMANDS
 	if(!strcmp(message->topic, (broker_username + "/" +"TopologyCommand").c_str() ))
