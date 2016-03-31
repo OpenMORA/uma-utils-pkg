@@ -226,7 +226,7 @@ bool CMQTTMosquitto::OnStartUp()
 	// Connect the Mosquitto Client
 	on_connect(connect(broker_host.c_str(), broker_port, Constants::keepalive_secs));
 	//Subscribe to a list of topics 
-	on_subscribe(NULL,2,NULL);
+	on_subscribe(NULL,0,NULL);
 
 
 	//Init timeStamps
@@ -305,7 +305,7 @@ bool CMQTTMosquitto::Iterate()
 			// Connect the Mosquitto Client
 			on_connect(connect(broker_host.c_str(), broker_port, Constants::keepalive_secs));
 			//Subscribe to a list of topics 
-			on_subscribe(NULL,2,NULL);
+			on_subscribe(NULL,0,NULL);
 
 		}
 
@@ -1019,13 +1019,13 @@ void CMQTTMosquitto::on_subscribe(uint16_t mid, int qos_count, const uint8_t *gr
 {
         for (int i = 0; i < Constants::topic_count; ++i) 
 		{           
-			std::string GirafName_topic = broker_username + "/" + Constants::topics[i];
-			 std::cerr << "Subscribing to " << GirafName_topic << "\n";
-			int rc=subscribe(NULL, GirafName_topic.c_str(), qos_count);
+			std::string topicName = broker_username + "/" + Constants::topics[i];
+			std::cerr << "Subscribing to " << topicName << "\n";
+			int rc = subscribe(NULL, topicName.c_str(), qos_count);
             if (rc)
-                std::cerr << "Error: failed to subscribe to " << GirafName_topic << ", subscribe returned " << rc << "\n";            
+				std::cerr << "Error: failed to subscribe to " << topicName << ", subscribe returned " << rc << "\n";
 			else		
-				std::cerr << "Subscribed to " << GirafName_topic << ", OK!\n";
+				std::cerr << "Subscribed to " << topicName << ", OK!\n";
 		}
         time_t rawtime;
         time(&rawtime);
@@ -1045,6 +1045,6 @@ void CMQTTMosquitto::on_publish(int *mid, const char *topic, int payloadlen, con
 	//Update vars	
 	payloadlen = strlen(myPayload.c_str());
 
-	//Send message over MQTT
-	int n = publish(mid, topic, payloadlen, myPayload.c_str());
+	//Send message over MQTT with qos=0
+	int n = publish(mid, topic, payloadlen, myPayload.c_str(),0,false);
 }
