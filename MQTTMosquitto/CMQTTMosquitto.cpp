@@ -235,7 +235,9 @@ bool CMQTTMosquitto::OnStartUp()
 	timestampServerACK = 0;
 	timestampRobotACK = mrpt::system::now();
 	//Init counters of ACK
-	counterClientACK, counterServerACK, counterRobotACK = 0;
+	counterClientACK = 0;
+	counterServerACK = 0;
+	counterRobotACK = 0;
 	
 	is_motion_command_set = false;		//indicates (true/false) if a motion command is active (To control robot from client)
 	return DoRegistrations();
@@ -335,6 +337,7 @@ bool CMQTTMosquitto::Iterate()
 			std::string message = format("%u %I64u|%u %I64u|%u %I64u", counterClientACK, timestampClientACK, counterRobotACK, timestampRobotACK, counterServerACK, timestampServerACK);
 			
 			on_publish(NULL, (broker_username + "/" + "RobotACK").c_str(), strlen(message.c_str()), message.c_str());
+			counterRobotACK++;
 		}
 
 
