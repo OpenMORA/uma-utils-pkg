@@ -85,7 +85,7 @@
 
   */
 
-#include "CMQTTmosquitto.h"
+#include "CMQTTMosquitto.h"
 #include <mosquittopp.h>
 #include "Constants.h"
 
@@ -225,7 +225,7 @@ bool CMQTTMosquitto::OnStartUp()
 	// Connect the Mosquitto Client
 	on_connect(connect(broker_host.c_str(), broker_port, Constants::keepalive_secs));
 	//Subscribe to a list of topics 
-	on_subscribe(NULL,0,NULL);
+    on_subscribe(0,0,NULL);
 
 
 	//Init timeStamps
@@ -304,7 +304,7 @@ bool CMQTTMosquitto::Iterate()
 			// Connect the Mosquitto Client
 			on_connect(connect(broker_host.c_str(), broker_port, Constants::keepalive_secs));
 			//Subscribe to a list of topics 
-			on_subscribe(NULL,0,NULL);
+            on_subscribe(0,0,NULL);
 
 		}
 
@@ -334,7 +334,7 @@ bool CMQTTMosquitto::Iterate()
 			// robotACK =  "LastClientACK|RobotACK|lastServerACK"
 			// All ACK msgs has the format: "counter timestamp"	
 			timestampRobotACK = mrpt::system::now();
-			std::string message = format("%u %I64u|%u %I64u|%u %I64u", counterClientACK, timestampClientACK, counterRobotACK, timestampRobotACK, counterServerACK, timestampServerACK);
+            std::string message = format("%u %lu|%u %lu|%u %lu", counterClientACK, timestampClientACK, counterRobotACK, timestampRobotACK, counterServerACK, timestampServerACK);
 			
 			on_publish(NULL, (broker_username + "/" + "RobotACK").c_str(), strlen(message.c_str()), message.c_str());
 			counterRobotACK++;
@@ -590,7 +590,7 @@ bool CMQTTMosquitto::OnNewMail(MOOSMSG_LIST &NewMail)
 						num_samples = laser_readings.size();
 						
 						message = format( "Aperture %.2f#",laser_obj->aperture );
-						message.append( format("Nsamples %u#",num_samples) );
+                        message.append( format("Nsamples %zu#",num_samples) );
 						message.append("Values");
 						for (size_t i=0; i<num_samples; i++ )
 							message.append(format(" %.2f",laser_readings[i]) );
@@ -676,7 +676,7 @@ void CMQTTMosquitto::on_message(const mosquitto_message *message)
 	if( strcmp(message->topic, (broker_username + "/" +"ClientACK").c_str()) )
 	{
 		std::cout << "[MQTTMosquitto]: " << message->topic << " : ";		
-		printf("MSG: %s", messageCommand);
+        printf("MSG: %s", messageCommand.c_str());
 		printf("\n\n");
 		//if (message->payloadlen)
 	    //    std::cout << ", payload text is " << message->payload << "\n";
@@ -686,7 +686,7 @@ void CMQTTMosquitto::on_message(const mosquitto_message *message)
 
 	//First value is ALWAYS the message timeStamp: [tt|msg_content]	
 	size_t pos = messageCommand.find("|");
-	mrpt::system::TTimeStamp messageTimeStamp = std::stoull(messageCommand.substr(0, pos));
+    mrpt::system::TTimeStamp messageTimeStamp = std::strtoull(messageCommand.substr(0, pos).c_str(),NULL,10);
 	messageCommand.erase(0, pos + 1);
 	printf("MSG_noTS = %s\n", messageCommand.c_str());
 
@@ -806,7 +806,7 @@ void CMQTTMosquitto::on_message(const mosquitto_message *message)
 		// GoToNode label
 		else if(action == "GoToNode")
 		{
-			//printf("Navegación solicitada a Nodo: %s\n",pluginCommand.c_str());
+			//printf("NavegaciÃ³n solicitada a Nodo: %s\n",pluginCommand.c_str());
 			
 			//! @moos_publish GO_TO_NODE Request the RobotController to start a reactive navigation to selected node.
 			m_Comms.Notify("GO_TO_NODE", pluginCommand );
@@ -965,7 +965,7 @@ void CMQTTMosquitto::on_message(const mosquitto_message *message)
 		//Separate counter from timestamp
 		pos = clientACK.find(" ");
 		counterClientACK = std::atoi(clientACK.substr(0, pos).c_str());
-		timestampClientACK = std::stoull(clientACK.substr(pos + 1));
+        timestampClientACK = std::strtoull(clientACK.substr(pos + 1).c_str(),NULL,10);
 	}
 
 	// ServerACK
@@ -978,7 +978,7 @@ void CMQTTMosquitto::on_message(const mosquitto_message *message)
 		//Separate counter from timestamp
 		pos = serverACK.find(" ");
 		counterServerACK = std::atoi(serverACK.substr(0, pos).c_str());
-		timestampServerACK = std::stoull(serverACK.substr(pos + 1));
+        timestampServerACK = std::strtoull(serverACK.substr(pos + 1).c_str(),NULL,10);
 	}
 
 	// Debug //Debugf
@@ -1030,7 +1030,7 @@ void CMQTTMosquitto::on_publish(int *mid, const char *topic, int payloadlen, con
 	std::strcpy(cstr, (char*)payload );
 	std::string sLoad = string(cstr);
 	uint64_t tt = (uint64_t)mrpt::system::now() / 10000;	//timestamp in ms
-	std::string myPayload = format("%I64u|", tt) + sLoad;
+    std::string myPayload = format("%lu|", tt) + sLoad;
 
 	//Update vars	
 	payloadlen = strlen(myPayload.c_str());
