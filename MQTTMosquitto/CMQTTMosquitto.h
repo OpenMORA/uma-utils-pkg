@@ -31,7 +31,7 @@
 
 #include "Constants.h"
 #include <COpenMORAMOOSApp.h>
-#include <mosquitto.h>
+//#include <mosquitto.h>
 #include <mosquittopp.h>
 
 using namespace std;
@@ -39,7 +39,7 @@ using namespace mosqpp;
 
 class CMQTTMosquitto :public COpenMORAApp,mosquittopp
 {
-		/** Class for storing an Hokuyo observation. */
+        /** Class for implementing a MQTT client withing OpenMORA. */
 	
 public:
 	CMQTTMosquitto();
