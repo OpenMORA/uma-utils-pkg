@@ -32,7 +32,7 @@
   */
 
 #include "CBatteryManager.h"
-#include <mrpt/slam/CObservationBatteryState.h>
+#include <mrpt/obs/CObservationBatteryState.h>
 
 using namespace std;
 
@@ -185,7 +185,7 @@ bool CBatteryManager::Iterate()
 		}
 		else
 		{
-			printf("[BatteryManager]: ERROR - Variable (%s) not found. Unable to monitor Voltage.", Battery_V);
+            printf("[BatteryManager]: ERROR - Variable (%s) not found. Unable to monitor Voltage.", Battery_V.c_str());
 			hasV = false;
 		}
 
@@ -204,7 +204,7 @@ bool CBatteryManager::Iterate()
 		}
 		else
 		{
-			printf("[BatteryManager]: ERROR - Variable (%s) not found. Unable to monitor Voltage.", Battery_I);
+            printf("[BatteryManager]: ERROR - Variable (%s) not found. Unable to monitor Voltage.", Battery_I.c_str());
 			hasI = false;
 		}
 
@@ -238,7 +238,7 @@ bool CBatteryManager::Iterate()
 		}
 		else
 		{
-			printf("[BatteryManager]: ERROR - Variable (%s) not found. Unable to monitor Voltage.", Charger_I);
+            printf("[BatteryManager]: ERROR - Variable (%s) not found. Unable to monitor Voltage.", Charger_I.c_str());
 			hasC = false;
 		}
 
@@ -264,7 +264,7 @@ bool CBatteryManager::Iterate()
 			//!  @moos_publish   BATTERY_MANAGER_V_FLOAT	Voltage (V) of the monitored battery as a float
 			m_Comms.Notify("BATTERY_MANAGER_V_FLOAT", Battery_Voltage);
 
-			mrpt::slam::CObservationBatteryStatePtr battery_obs = mrpt::slam::CObservationBatteryState::Create();
+            mrpt::obs::CObservationBatteryStatePtr battery_obs = mrpt::obs::CObservationBatteryState::Create();
 			battery_obs->timestamp = mrpt::system::now();
 			battery_obs->voltageMainRobotBattery = Battery_Voltage;
 			battery_obs->voltageMainRobotBatteryIsValid = true;
