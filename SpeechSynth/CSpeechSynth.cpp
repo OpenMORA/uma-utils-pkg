@@ -109,6 +109,8 @@ bool CSpeechSynthApp::OnNewMail(MOOSMSG_LIST &NewMail)
 			
 			// Is it necessary to free the memory allocated????
 			// GlobalFree(hMem);
+
+			m_Comms.Notify("VOICE_EVENT_DONE","");
 		}
 		
 		if( (i->GetName()=="SHUTDOWN") && (MOOSStrCmp(i->GetString(),"true")) )
